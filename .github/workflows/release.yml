@@ -1,0 +1,73 @@
+name: 🚀 Create release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write # Required to update changelog file
+  pull-requests: write # Required to create release PRs
+  issues: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  test:
+    name: Tests
+    needs: release-please
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true') }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: Build firmware
+    runs-on: ubuntu-24.04
+    needs: [release-please, test]
+    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true') }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Read firmware metadata
+        id: meta
+        run: |
+          PRODUCER=$(grep '^custom_producer_name' platformio.ini | awk -F' *= *' '{print $2}' | tr -d ' ')
+          VERSION=v$(grep '^custom_version' platformio.ini | awk -F' *= *' '{print $2}' | cut -d';' -f1 | tr -d ' ')
+          echo "firmware_name=firmware_${PRODUCER}_${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build firmware
+        run: pio run --environment esp32-s3-devkitc-1
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.meta.outputs.firmware_name }}
+          path: .pio/build/esp32-s3-devkitc-1/${{ steps.meta.outputs.firmware_name }}.bin
+          if-no-files-found: error

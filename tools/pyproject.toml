@@ -1,0 +1,25 @@
+[project]
+name = "si-tyre-analyzer"
+version = "0.1.0"
+description = "View and analyse tyre temperature recordings from SI Tyre Analyzer"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "requests>=2.31",
+    "PySide6>=6.6",
+]
+
+[project.scripts]
+si-tyre-analyzer = "si_tyre_analyzer.gui.app:main"
+si-tyre = "si_tyre_analyzer.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["si_tyre_analyzer"]
