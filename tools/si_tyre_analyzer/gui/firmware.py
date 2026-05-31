@@ -19,6 +19,8 @@ FW_TAG_PREFIX = "si-tyre-analyzer-v"
 
 @dataclass
 class FwRelease:
+    """A published firmware release: version, .bin download URL, and notes."""
+
     version: str
     bin_url: str
     notes: str
@@ -28,14 +30,19 @@ def latest() -> FwRelease | None:
     best: FwRelease | None = None
     for rel in update._fetch():
         tag = rel.get("tag_name", "")
-        if (not tag.startswith(FW_TAG_PREFIX) or rel.get("draft")
-                or rel.get("prerelease")):
+        if (
+            not tag.startswith(FW_TAG_PREFIX)
+            or rel.get("draft")
+            or rel.get("prerelease")
+        ):
             continue
-        ver = tag[len(FW_TAG_PREFIX):]
+        ver = tag[len(FW_TAG_PREFIX) :]
         binurl = next(
-            (a["browser_download_url"]
-             for a in rel.get("assets", [])
-             if a.get("name", "").endswith(".bin")),
+            (
+                a["browser_download_url"]
+                for a in rel.get("assets", [])
+                if a.get("name", "").endswith(".bin")
+            ),
             None,
         )
         if not binurl:
@@ -47,6 +54,7 @@ def latest() -> FwRelease | None:
 
 def device_version(host: str) -> str:
     import requests
+
     r = requests.get(f"http://{host}/api/peers", timeout=10)
     r.raise_for_status()
     return r.json().get("master_fw", "")
@@ -71,11 +79,13 @@ def _download(url: str) -> str:
 
 def _post(host: str, path: str, bin_path: str) -> None:
     import requests
+
     with open(bin_path, "rb") as f:
         r = requests.post(
             f"http://{host}{path}",
-            files={"firmware": (os.path.basename(bin_path), f,
-                                "application/octet-stream")},
+            files={
+                "firmware": (os.path.basename(bin_path), f, "application/octet-stream")
+            },
             timeout=180,
         )
     r.raise_for_status()

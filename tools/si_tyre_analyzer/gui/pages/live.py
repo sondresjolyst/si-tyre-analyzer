@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...constants import DEFAULT_HOST, WHEELS
 from .. import theme
@@ -13,23 +20,25 @@ from ..net import LivePoller
 
 
 class LivePage(QWidget):
+    """Poll the master's /api/live and show the four wheels updating live."""
+
     def __init__(self):
         super().__init__()
         self._poller: LivePoller | None = None
 
         root = QVBoxLayout(self)
-        bar = QHBoxLayout()
-        bar.addWidget(QLabel("Master host:"))
+        top_bar = QHBoxLayout()
+        top_bar.addWidget(QLabel("Master host:"))
         self._host = QLineEdit(DEFAULT_HOST)
         self._host.setMaximumWidth(180)
-        bar.addWidget(self._host)
+        top_bar.addWidget(self._host)
         self._btn = QPushButton("Connect")
         self._btn.clicked.connect(self._toggle)
-        bar.addWidget(self._btn)
+        top_bar.addWidget(self._btn)
         self._status = QLabel("Not connected")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
-        bar.addWidget(self._status, 1)
-        root.addLayout(bar)
+        top_bar.addWidget(self._status, 1)
+        root.addLayout(top_bar)
 
         grid = QGridLayout()
         self._tyres = {}

@@ -15,13 +15,13 @@ Yes**, save, and reboot.
 
 ## Pinout (S3-MINI master → ILI9341 + XPT2046)
 
-| Signal | GPIO | Signal | GPIO |
-|--------|------|--------|------|
-| SCK | 4 | RST | 15 |
-| MOSI | 5 | T_CS | 9 |
-| MISO | 8 | T_IRQ | 33 |
-| CS | 6 | LED | 3V3 |
-| DC | 7 | VCC / GND | 3V3 / GND |
+| Signal | GPIO | Signal    | GPIO      |
+| ------ | ---- | --------- | --------- |
+| SCK    | 4    | RST       | 15        |
+| MOSI   | 5    | T_CS      | 9         |
+| MISO   | 8    | T_IRQ     | 33        |
+| CS     | 6    | LED       | 3V3       |
+| DC     | 7    | VCC / GND | 3V3 / GND |
 
 - TFT and touch share SCK/MOSI/MISO; each has its own chip select (`CS`, `T_CS`).
 - Pins are set by the `custom_tft_*` / `custom_touch_*` build flags.

@@ -46,8 +46,14 @@ class _HeatCanvas(QWidget):
                 p.fillRect(x0, y0, x1 - x0, y1 - y0, QColor(rr, gg, bb))
                 if r == mid:
                     p.setPen(QColor(theme.WHITE))
-                    p.drawText(x0, y0, x1 - x0, y1 - y0, Qt.AlignCenter,
-                               str(round(float(g[r, c]))))
+                    p.drawText(
+                        x0,
+                        y0,
+                        x1 - x0,
+                        y1 - y0,
+                        Qt.AlignCenter,
+                        str(round(float(g[r, c]))),
+                    )
 
 
 class TyreView(QWidget):
@@ -79,7 +85,8 @@ class TyreView(QWidget):
             return
         self._canvas.setGrid(grid)
         self._stats.setText(
-            f"min {float(np.nanmin(grid)):.1f}°  ·  max {float(np.nanmax(grid)):.1f}°")
+            f"min {float(np.nanmin(grid)):.1f}°  ·  max {float(np.nanmax(grid)):.1f}°"
+        )
 
     def clear(self):
         self.setGrid(None)

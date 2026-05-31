@@ -8,9 +8,16 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QListWidget,
-                               QMessageBox, QPushButton, QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QListWidget,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from . import update
 from .net import Worker
@@ -24,6 +31,8 @@ ASSETS = Path(__file__).parent / "assets"
 
 
 class MainWindow(QWidget):
+    """Top-level window: header, nav, and the stacked pages."""
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SI Tyre Analyzer")
@@ -98,14 +107,21 @@ class MainWindow(QWidget):
         if rel is None:
             if manual:
                 QMessageBox.information(
-                    self, "Up to date",
-                    f"You're on the latest version ({update.current_version()}).")
+                    self,
+                    "Up to date",
+                    f"You're on the latest version ({update.current_version()}).",
+                )
             return
-        if QMessageBox.question(
-                self, "Update available",
+        if (
+            QMessageBox.question(
+                self,
+                "Update available",
                 f"Version {rel.version} is available "
                 f"(you have {update.current_version()}).\n\n"
-                "Install it now? The app will restart.") != QMessageBox.Yes:
+                "Install it now? The app will restart.",
+            )
+            != QMessageBox.Yes
+        ):
             return
         self._update_btn.setEnabled(False)
         self._update_btn.setText("Updating…")
@@ -118,13 +134,15 @@ class MainWindow(QWidget):
         self._reset_update_btn()
         if manual:
             QMessageBox.warning(
-                self, "Update check failed",
-                f"Could not check for updates.\n\n{err}")
+                self, "Update check failed", f"Could not check for updates.\n\n{err}"
+            )
 
     def _on_updated(self):
         QMessageBox.information(
-            self, "Update installed",
-            "The update was installed. The app will now restart.")
+            self,
+            "Update installed",
+            "The update was installed. The app will now restart.",
+        )
         update.relaunch()
         QApplication.quit()
 

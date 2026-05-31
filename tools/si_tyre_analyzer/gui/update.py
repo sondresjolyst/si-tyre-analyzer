@@ -48,6 +48,8 @@ def _parse(v: str) -> tuple[int, ...]:
 
 @dataclass
 class Release:
+    """A published app release: version, wheel download URL, and notes."""
+
     version: str
     wheel_url: str
     notes: str
@@ -72,11 +74,13 @@ def check() -> Release | None:
         tag = rel.get("tag_name", "")
         if not tag.startswith(TAG_PREFIX) or rel.get("draft") or rel.get("prerelease"):
             continue
-        ver = tag[len(TAG_PREFIX):]
+        ver = tag[len(TAG_PREFIX) :]
         wheel = next(
-            (a["browser_download_url"]
-             for a in rel.get("assets", [])
-             if a.get("name", "").endswith(".whl")),
+            (
+                a["browser_download_url"]
+                for a in rel.get("assets", [])
+                if a.get("name", "").endswith(".whl")
+            ),
             None,
         )
         if not wheel:

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QPushButton,
-                               QWidget)
+from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QPushButton, QWidget
 
 from . import prefs
 from .runs import DEFAULT_DIR, load_runs, run_label
@@ -38,8 +37,9 @@ class RunSelector(QWidget):
         self._rebuild(sid)
 
     def _open_folder(self):
-        d = QFileDialog.getExistingDirectory(self, "Open runs folder",
-                                             prefs.last_dir(DEFAULT_DIR))
+        d = QFileDialog.getExistingDirectory(
+            self, "Open runs folder", prefs.last_dir(DEFAULT_DIR)
+        )
         if not d:
             return
         prefs.set_last_dir(d)

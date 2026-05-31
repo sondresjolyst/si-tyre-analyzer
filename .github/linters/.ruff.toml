@@ -1,0 +1,11 @@
+line-length = 88
+
+[lint]
+select = ["E", "F", "W"]
+
+[lint.per-file-ignores]
+# SCons injects env/Import as globals.
+"extra_script.py" = ["F821"]
+# matplotlib.use() must run before pyplot is imported.
+"tools/si_tyre_analyzer/gui/pages/analysis.py" = ["E402"]
+"tools/tests/*" = ["E402"]

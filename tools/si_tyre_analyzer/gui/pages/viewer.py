@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import (QComboBox, QGridLayout, QHBoxLayout, QLabel,
-                               QPushButton, QSlider, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...constants import WHEELS
 from ..heatmap_widget import TyreView
@@ -12,9 +20,11 @@ from ..widgets import RunSelector
 
 
 class ViewerPage(QWidget):
+    """Replay a run: scrub and play the four heatmaps with a speed control."""
+
     def __init__(self):
         super().__init__()
-        self._run = {}           # current {wheel: SessionData}
+        self._run = {}  # current {wheel: SessionData}
         self._n = 0
         self._base_ms = 500.0
         self._speed = 1
@@ -23,11 +33,11 @@ class ViewerPage(QWidget):
         self._timer.timeout.connect(self._advance)
 
         root = QVBoxLayout(self)
-        bar = QHBoxLayout()
+        top_bar = QHBoxLayout()
         self._sel = RunSelector()
         self._sel.runChanged.connect(self._on_run)
-        bar.addWidget(self._sel, 1)
-        root.addLayout(bar)
+        top_bar.addWidget(self._sel, 1)
+        root.addLayout(top_bar)
 
         grid = QGridLayout()
         self._tyres = {}

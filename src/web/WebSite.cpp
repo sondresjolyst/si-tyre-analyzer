@@ -4,7 +4,9 @@
 
 #include <LittleFS.h>
 
+#include <cstdio>
 #include <map>
+#include <vector>
 
 #include "web/Logo.h"
 
@@ -51,8 +53,8 @@ static String head(const char *title) {
   String h;
   h.reserve(4096);  // grow once instead of reallocating across many appends
   h = "<!doctype html><html><head><meta charset='utf-8'>"
-             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-             "<title>";
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<title>";
   h += title;
   h += "</title>";
   h += kStyle;
@@ -64,7 +66,8 @@ static String opt(const char *value, const char *label, bool sel) {
   String s = "<option value='";
   s += value;
   s += "'";
-  if (sel) s += " selected";
+  if (sel)
+    s += " selected";
   s += ">";
   s += label;
   s += "</option>";
@@ -221,14 +224,16 @@ String pageRoot(const DeviceConfig &cfg) {
 
 String pageSessions(const std::vector<SessionInfo> &sessions) {
   String h = head("Sessions — SI Tyre Analyzer");
-  h += "<h1>Sessions</h1>"
-       "<a class='link' href='/'><button type='button'>&larr; Back</button></a>";
+  h +=
+      "<h1>Sessions</h1>"
+      "<a class='link' href='/'><button type='button'>&larr; Back</button></a>";
   h += "<div class='card'>";
   if (sessions.empty()) {
     h += "<p class='muted'>No sessions recorded yet.</p>";
   } else {
     std::map<uint32_t, std::vector<const SessionInfo *>> runs;
-    for (const auto &s : sessions) runs[s.session_id].push_back(&s);
+    for (const auto &s : sessions)
+      runs[s.session_id].push_back(&s);
 
     for (const auto &run : runs) {
       String files;  // JS array for "Download all"
@@ -237,7 +242,8 @@ String pageSessions(const std::vector<SessionInfo> &sessions) {
       h += "<button type='button' class='btn-sm dl' onclick='dlAll([";
       bool first = true;
       for (const auto *s : run.second) {
-        if (!first) files += ",";
+        if (!first)
+          files += ",";
         files += "\"" + s->name + "\"";
         first = false;
       }

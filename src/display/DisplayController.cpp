@@ -77,7 +77,8 @@ const char *kLabels[4] = {"FL", "FR", "RL", "RR"};
 namespace tyre {
 
 bool DisplayController::begin() {
-  if (!gfx.init()) return false;
+  if (!gfx.init())
+    return false;
   gfx.setRotation(1);
   gfx.fillScreen(TFT_BLACK);
   ready_ = true;
@@ -85,14 +86,17 @@ bool DisplayController::begin() {
 }
 
 bool DisplayController::getTouch(uint16_t *x, uint16_t *y) {
-  if (!ready_) return false;
+  if (!ready_)
+    return false;
   return gfx.getTouch(x, y);
 }
 
 void DisplayController::render(const LiveDashboard &dash) {
-  if (!ready_) return;
+  if (!ready_)
+    return;
   const uint32_t now = millis();
-  if (now - lastDrawMs_ < 150) return;
+  if (now - lastDrawMs_ < 150)
+    return;
   lastDrawMs_ = now;
 
   for (int slot = 0; slot < 4; slot++) {
@@ -124,8 +128,10 @@ void DisplayController::drawCell(int slot, const char *label,
   float lo = 1e9f, hi = -1e9f;
   for (int i = 0; i < kCols * kRows; i++) {
     float t = temps[i] / kScale;
-    if (t < lo) lo = t;
-    if (t > hi) hi = t;
+    if (t < lo)
+      lo = t;
+    if (t > hi)
+      hi = t;
   }
 
   const int mapX = x + 6, mapY = y + 24, mapW = 148, mapH = 64;
@@ -133,15 +139,15 @@ void DisplayController::drawCell(int slot, const char *label,
   for (int r = 0; r < kRows; r++) {
     for (int c = 0; c < kCols; c++) {
       float t = temps[r * kCols + c] / kScale;
-      gfx.fillRect(mapX + c * pw, mapY + r * ph, pw, ph,
-                   heatRgb565(t, lo, hi));
+      gfx.fillRect(mapX + c * pw, mapY + r * ph, pw, ph, heatRgb565(t, lo, hi));
     }
   }
 
   const int mid = kRows / 2;
   auto zoneAvg = [&](int c0, int c1) {
     float s = 0;
-    for (int c = c0; c < c1; c++) s += temps[mid * kCols + c] / kScale;
+    for (int c = c0; c < c1; c++)
+      s += temps[mid * kCols + c] / kScale;
     return s / (c1 - c0);
   };
   const int third = kCols / 3;

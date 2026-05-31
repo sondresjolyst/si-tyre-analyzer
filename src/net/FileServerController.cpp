@@ -125,7 +125,7 @@ static void handleNewCar() {  // master: rotate to a fresh 4-digit Car ID
 
 static void handleSetCar() {  // slave: enter the master's Car ID
   if (server.hasArg("group_id")) {
-    long v = server.arg("group_id").toInt();
+    int32_t v = server.arg("group_id").toInt();
     if (v < 1000)
       v = 1000;
     if (v > 9999)
@@ -286,7 +286,9 @@ static void handleNotFound() {
 static void handleConnectTest() {
   server.send(200, "text/plain", "Microsoft Connect Test");
 }
-static void handleNcsiTxt() { server.send(200, "text/plain", "Microsoft NCSI"); }
+static void handleNcsiTxt() {
+  server.send(200, "text/plain", "Microsoft NCSI");
+}
 
 // Linux NetworkManager connectivity probes.
 static void handleNmCheck() {
@@ -296,8 +298,9 @@ static void handleFedoraHotspot() { server.send(200, "text/plain", "OK"); }
 
 // Apple captive probes (also matches iOS).
 static void handleAppleSuccess() {
-  server.send(200, "text/html",
-              "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+  server.send(
+      200, "text/html",
+      "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
 }
 
 void registerFileServerRoutes() {

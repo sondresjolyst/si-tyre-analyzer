@@ -6,16 +6,17 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: write # Required to update changelog file
-  pull-requests: write # Required to create release PRs
-  issues: write
+permissions: {}
 
 jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-24.04
     if: github.event_name == 'push'
+    permissions:
+      contents: write # update changelog + create the release
+      pull-requests: write # create release PRs
+      issues: write
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       fw_release_created: ${{ steps.release.outputs['.--release_created'] }}
@@ -80,7 +81,9 @@ jobs:
         if: ${{ needs.release-please.outputs.fw_release_created == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.release-please.outputs.fw_tag_name }}" ".pio/build/esp32-s3-devkitc-1/${{ steps.meta.outputs.firmware_name }}.bin" --clobber
+          FW_TAG: ${{ needs.release-please.outputs.fw_tag_name }}
+          FW_NAME: ${{ steps.meta.outputs.firmware_name }}
+        run: gh release upload "$FW_TAG" ".pio/build/esp32-s3-devkitc-1/$FW_NAME.bin" --clobber
 
   build-app:
     name: Build desktop app
@@ -105,4 +108,5 @@ jobs:
       - name: Attach wheel to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.release-please.outputs.app_tag_name }}" tools/dist/*.whl --clobber
+          APP_TAG: ${{ needs.release-please.outputs.app_tag_name }}
+        run: gh release upload "$APP_TAG" tools/dist/*.whl --clobber

@@ -6,9 +6,18 @@ import os
 
 from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QLabel, QLineEdit,
-                               QListWidget, QListWidgetItem, QMessageBox,
-                               QPushButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ...constants import DEFAULT_HOST
 from .. import firmware, net, prefs, theme
@@ -17,6 +26,8 @@ from ..runs import DEFAULT_DIR, load_runs, run_label
 
 
 class LibraryPage(QWidget):
+    """List/download runs from a device over Wi-Fi plus the local library."""
+
     openRun = Signal(dict)  # {wheel: SessionData}
 
     def __init__(self):
@@ -81,7 +92,6 @@ class LibraryPage(QWidget):
 
     # ---- device ----
     def _run_worker(self, fn, on_done):
-        host = self._host.text().strip()
         self._status.setText("Working…")
         self._worker = net.Worker(fn)
         self._worker.done.connect(on_done)
@@ -112,16 +122,22 @@ class LibraryPage(QWidget):
             self._reset_fw_btn()
             self._status.setText("Firmware up to date")
             QMessageBox.information(
-                self, "Up to date",
+                self,
+                "Up to date",
                 f"This device is on the latest firmware "
-                f"({firmware.device_version(host)}).")
+                f"({firmware.device_version(host)}).",
+            )
             return
         cur = firmware.device_version(host)
-        if QMessageBox.question(
-                self, "Update available",
+        if (
+            QMessageBox.question(
+                self,
+                "Update available",
                 f"Firmware {rel.version} is available (device has {cur}).\n\n"
-                "Update the car? The wheel units will flash over the air.") \
-                != QMessageBox.Yes:
+                "Update the car? The wheel units will flash over the air.",
+            )
+            != QMessageBox.Yes
+        ):
             self._reset_fw_btn()
             self._status.setText("")
             return
@@ -134,11 +150,16 @@ class LibraryPage(QWidget):
 
     def _fw_cascaded(self, host, rel):
         self._status.setText("Wheels updating over the air")
-        if QMessageBox.question(
-                self, "Update the master?",
+        if (
+            QMessageBox.question(
+                self,
+                "Update the master?",
                 "The wheel units are now flashing.\n\n"
                 "Also flash this master device? It will reboot and "
-                "disconnect from Wi-Fi.") != QMessageBox.Yes:
+                "disconnect from Wi-Fi.",
+            )
+            != QMessageBox.Yes
+        ):
             self._reset_fw_btn()
             return
         self._b_fw.setText("Flashing master…")
@@ -151,9 +172,11 @@ class LibraryPage(QWidget):
         self._reset_fw_btn()
         self._status.setText("Master rebooting")
         QMessageBox.information(
-            self, "Master updating",
+            self,
+            "Master updating",
             "The master is flashing and will reboot. Reconnect to its "
-            "Wi-Fi once it returns.")
+            "Wi-Fi once it returns.",
+        )
 
     def _fw_failed(self, msg):
         self._reset_fw_btn()
@@ -168,8 +191,9 @@ class LibraryPage(QWidget):
         self._devlist.clear()
         for s in sessions:
             it = QListWidgetItem(
-                f"{s.get('wheel','?')}  {s.get('name','')}  "
-                f"{s.get('records','?')} recs")
+                f"{s.get('wheel', '?')}  {s.get('name', '')}  "
+                f"{s.get('records', '?')} recs"
+            )
             it.setData(Qt.UserRole, s.get("name", ""))
             self._devlist.addItem(it)
         self._status.setText(f"{len(sessions)} session(s) on device")
@@ -187,8 +211,9 @@ class LibraryPage(QWidget):
         host = self._host.text().strip()
         dest = self._dir.text().strip()
         os.makedirs(dest, exist_ok=True)
-        self._run_worker(lambda: download(host, name, dest),
-                         lambda _p: self._after_download([_p]))
+        self._run_worker(
+            lambda: download(host, name, dest), lambda _p: self._after_download([_p])
+        )
 
     def _download_all(self):
         host = self._host.text().strip()
@@ -202,8 +227,7 @@ class LibraryPage(QWidget):
 
     # ---- local ----
     def _browse(self):
-        d = QFileDialog.getExistingDirectory(self, "Library folder",
-                                             self._dir.text())
+        d = QFileDialog.getExistingDirectory(self, "Library folder", self._dir.text())
         if d:
             self._dir.setText(d)
             self._refresh()

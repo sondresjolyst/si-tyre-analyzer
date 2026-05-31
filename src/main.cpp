@@ -16,6 +16,8 @@
 #include <esp_mac.h>
 #include <esp_system.h>
 
+#include <cstdio>
+
 #include "config/DeviceConfig.h"
 #include "config/Settings.h"
 #include "controllers/EspNowController.h"
@@ -181,10 +183,12 @@ static void onEspFwPush() { gFwPushPending = true; }
 
 // Associate STA to the master's (open) SoftAP. Returns whether connected.
 static bool joinMasterAP(uint32_t timeoutMs) {
-  if (WiFi.status() == WL_CONNECTED) return true;
+  if (WiFi.status() == WL_CONNECTED)
+    return true;
   WiFi.begin(gConfig.master_ssid);
   uint32_t t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs) delay(100);
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs)
+    delay(100);
   return WiFi.status() == WL_CONNECTED;
 }
 
@@ -231,8 +235,8 @@ static bool uploadSessionToMaster(uint32_t sessionId) {
   if (!gConfig.has_master || gConfig.master_ssid[0] == 0)
     return false;
   char fname[40];
-  snprintf(fname, sizeof(fname), "%s_%lu.bin", tyre::wheelName(gConfig.wheel),
-           static_cast<unsigned long>(sessionId));
+  snprintf(fname, sizeof(fname), "%s_%u.bin", tyre::wheelName(gConfig.wheel),
+           static_cast<unsigned>(sessionId));
   File f = LittleFS.open(String("/sessions/") + fname, "r");
   if (!f)
     return false;

@@ -23,15 +23,15 @@ def _write(tmp_path, rows):
 
 def test_cumulative_start_times(tmp_path):
     laps = parse_laps(_write(tmp_path, ["1,3,60.0", "2,2,65.0", "3,1,70.0"]))
-    assert [l.lap for l in laps] == [1, 2, 3]
-    assert [l.start_s for l in laps] == [0.0, 60.0, 125.0]
-    assert [l.pos for l in laps] == [3, 2, 1]
+    assert [lp.lap for lp in laps] == [1, 2, 3]
+    assert [lp.start_s for lp in laps] == [0.0, 60.0, 125.0]
+    assert [lp.pos for lp in laps] == [3, 2, 1]
 
 
 def test_skips_unparseable_rows(tmp_path):
     laps = parse_laps(_write(tmp_path, ["1,1,60.0", "2,1,", "3,1,bogus", "4,1,30.0"]))
-    assert [l.lap for l in laps] == [1, 4]
-    assert [l.start_s for l in laps] == [0.0, 60.0]
+    assert [lp.lap for lp in laps] == [1, 4]
+    assert [lp.start_s for lp in laps] == [0.0, 60.0]
 
 
 def test_missing_pos_is_none(tmp_path):
@@ -42,7 +42,7 @@ def test_missing_pos_is_none(tmp_path):
 
 
 def test_empty_when_no_laps(tmp_path):
-    assert parse_laps(_write(tmp_path, [])) == []
+    assert not parse_laps(_write(tmp_path, []))
 
 
 if __name__ == "__main__":

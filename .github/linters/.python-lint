@@ -1,0 +1,30 @@
+[MAIN]
+# PlatformIO injects these as globals into extra_script.py (SCons).
+additional-builtins=env,Import
+
+[TYPECHECK]
+# PySide6's Qt classes live in compiled extension modules pylint can't import;
+# tomllib is stdlib only on 3.11+ (guarded by try/except in update.py).
+ignored-modules=PySide6,tomllib
+
+[MESSAGES CONTROL]
+# Only rules that genuinely don't fit a PySide6 + matplotlib desktop app:
+# Qt API overrides keep their camelCase names; GUI classes carry many widgets;
+# lazy/local imports keep heavy deps (matplotlib, requests) off the import path;
+# matplotlib.use() must run before pyplot is imported; tests patch internals.
+disable=
+    invalid-name,
+    missing-function-docstring,
+    too-many-instance-attributes,
+    too-few-public-methods,
+    too-many-locals,
+    too-many-statements,
+    too-many-branches,
+    too-many-return-statements,
+    protected-access,
+    import-outside-toplevel,
+    wrong-import-position,
+    attribute-defined-outside-init,
+    duplicate-code,
+    broad-exception-caught,
+    consider-using-with

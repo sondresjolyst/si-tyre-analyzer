@@ -73,12 +73,12 @@ Pairing is saved across power cycles.
 
 ## The app
 
-| Page | What it's for |
-| --- | --- |
+| Page         | What it's for                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- |
 | **Sessions** | List runs on a connected device and download them into your local library. Configure a device or update its firmware. |
-| **Live** | Connect to the master (`192.168.4.1`) and watch all four wheels update live. |
-| **Viewer** | Replay a run — scrub and play the four heatmaps with a speed control. |
-| **Analysis** | Tread profile (inner / middle / outer), temperature over time, time-in-window, and front/rear & left/right balance. |
+| **Live**     | Connect to the master (`192.168.4.1`) and watch all four wheels update live.                                          |
+| **Viewer**   | Replay a run — scrub and play the four heatmaps with a speed control.                                                 |
+| **Analysis** | Tread profile (inner / middle / outer), temperature over time, time-in-window, and front/rear & left/right balance.   |
 
 ### Downloading runs
 
@@ -113,11 +113,11 @@ web page — never reflashed per unit.
 
 **Button (one button, by hold time):**
 
-| Gesture | Action |
-| --- | --- |
-| Tap | Start / stop recording (master controls the whole car) |
-| Hold ~3 s | Enter pairing |
-| Hold ~8 s | Enter Wi-Fi config mode (`SITA <wheel> <Car ID>`) |
+| Gesture   | Action                                                 |
+| --------- | ------------------------------------------------------ |
+| Tap       | Start / stop recording (master controls the whole car) |
+| Hold ~3 s | Enter pairing                                          |
+| Hold ~8 s | Enter Wi-Fi config mode (`SITA <wheel> <Car ID>`)      |
 
 **Status LED:** solid while recording, blinks in config mode, and shows the
 button gesture stage while you hold it.
