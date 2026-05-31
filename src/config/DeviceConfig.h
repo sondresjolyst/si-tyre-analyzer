@@ -96,12 +96,13 @@ struct PeerEntry {
 
 // Persisted device configuration (NVS via Settings).
 struct DeviceConfig {
-  uint8_t role;        // Role
-  uint8_t wheel;       // WheelPos (this device's wheel; WHEEL_NONE for master)
-  uint8_t has_sensor;  // 1 wheel unit, 0 dash master
-  uint8_t channel;     // ESP-NOW / SoftAP channel (1/6/11)
-  uint32_t group_id;   // per-car isolation tag
-  char car_name[24];   // user car label (e.g. "Volvo 242 Turbo"); "" if unset
+  uint8_t role;         // Role
+  uint8_t wheel;        // WheelPos (this device's wheel; WHEEL_NONE for master)
+  uint8_t has_sensor;   // 1 wheel unit, 0 dash master
+  uint8_t has_display;  // 1 if an ILI9341 dash gauge is fitted (master only)
+  uint8_t channel;      // ESP-NOW / SoftAP channel (1/6/11)
+  uint32_t group_id;    // per-car isolation tag
+  char car_name[24];    // user car label (e.g. "Volvo 242 Turbo"); "" if unset
 
   // Slave: the master it is paired with.
   uint8_t master_mac[6];

@@ -1,0 +1,8 @@
+default: true
+# README leads with a centred <p>/<img> banner.
+MD033: false
+MD041: false
+# Prose lines are not hard-wrapped.
+MD013: false
+# Fenced code blocks inside list items: defer to Prettier's formatting.
+MD031: false

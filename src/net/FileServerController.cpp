@@ -16,6 +16,10 @@
 #include "storage/SessionLogger.h"
 #include "web/WebSite.h"
 
+#ifndef VERSION
+#define VERSION "v0.0.0"
+#endif
+
 extern WebServer server;
 extern PRINTHelper printHelper;
 
@@ -94,6 +98,7 @@ static void handlePair() {
 static void handleApiPeers() {
   JsonDocument doc;
   doc["pairing"] = gEsp.pairing();
+  doc["master_fw"] = VERSION;
   JsonArray w = doc["wheels"].to<JsonArray>();
   for (int i = 0; i < kMaxPeers; i++) {
     if (!gConfig.peers[i].in_use)
@@ -120,7 +125,7 @@ static void handleNewCar() {  // master: rotate to a fresh 4-digit Car ID
 
 static void handleSetCar() {  // slave: enter the master's Car ID
   if (server.hasArg("group_id")) {
-    long v = server.arg("group_id").toInt();
+    int32_t v = server.arg("group_id").toInt();
     if (v < 1000)
       v = 1000;
     if (v > 9999)
@@ -144,6 +149,8 @@ static void handleConfig() {
     gConfig.wheel = wheelFromName(server.arg("wheel").c_str());
   if (server.hasArg("has_sensor"))
     gConfig.has_sensor = server.arg("has_sensor").toInt() ? 1 : 0;
+  if (server.hasArg("has_display"))
+    gConfig.has_display = server.arg("has_display").toInt() ? 1 : 0;
   if (server.hasArg("channel"))
     gConfig.channel = static_cast<uint8_t>(server.arg("channel").toInt());
   if (server.hasArg("group_id"))
@@ -275,8 +282,36 @@ static void handleNotFound() {
   server.send(302, "text/plain", "");
 }
 
+// Windows NCSI connectivity probes.
+static void handleConnectTest() {
+  server.send(200, "text/plain", "Microsoft Connect Test");
+}
+static void handleNcsiTxt() {
+  server.send(200, "text/plain", "Microsoft NCSI");
+}
+
+// Linux NetworkManager connectivity probes.
+static void handleNmCheck() {
+  server.send(200, "text/plain", "NetworkManager is online");
+}
+static void handleFedoraHotspot() { server.send(200, "text/plain", "OK"); }
+
+// Apple captive probes (also matches iOS).
+static void handleAppleSuccess() {
+  server.send(
+      200, "text/html",
+      "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+}
+
 void registerFileServerRoutes() {
   server.onNotFound(handleNotFound);
+  server.on("/connecttest.txt", HTTP_GET, handleConnectTest);
+  server.on("/ncsi.txt", HTTP_GET, handleNcsiTxt);
+  server.on("/check_network_status.txt", HTTP_GET, handleNmCheck);
+  server.on("/nm", HTTP_GET, handleNmCheck);
+  server.on("/static/hotspot.txt", HTTP_GET, handleFedoraHotspot);
+  server.on("/hotspot-detect.html", HTTP_GET, handleAppleSuccess);
+  server.on("/library/test/success.html", HTTP_GET, handleAppleSuccess);
   server.on("/", HTTP_GET, handleRoot);
   server.on("/sessions", HTTP_GET, handleSessionsPage);
   server.on("/api/sessions", HTTP_GET, handleApiSessions);

@@ -11,3 +11,4 @@ __pycache__
 .venv
 *.egg-info
 tools/run_demo
+src/web/Logo.h
