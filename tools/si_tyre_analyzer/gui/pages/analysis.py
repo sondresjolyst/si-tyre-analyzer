@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import matplotlib
 
@@ -25,12 +26,37 @@ from PySide6.QtWidgets import (
 
 from ...constants import WHEELS
 from ...lapdata import parse_laps
-from .. import prefs, theme
+from .. import meta, prefs, theme
 from ..colors import tyre_cmap
-from ..runs import DEFAULT_DIR
+from ..runs import DEFAULT_DIR, run_label
 from ..widgets import RunSelector
 
 POS = {"FL": (0, 0), "FR": (0, 1), "RL": (1, 0), "RR": (1, 1)}
+LOGO = Path(__file__).resolve().parent.parent / "assets" / "si_tyre_logo.svg"
+# A4 landscape in mm; matplotlib figsize is in inches, so divide by 25.4.
+A4_MM = (297, 210)
+A4_LANDSCAPE = (A4_MM[0] / 25.4, A4_MM[1] / 25.4)
+
+
+def _svg_array(path, width=2400):
+    """Render an SVG to an RGBA numpy array via Qt, or None on failure."""
+    from PySide6.QtCore import QByteArray
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtSvg import QSvgRenderer
+
+    renderer = QSvgRenderer(QByteArray(Path(path).read_bytes()))
+    size = renderer.defaultSize()
+    if size.width() <= 0:
+        return None
+    height = max(1, round(width * size.height() / size.width()))
+    img = QImage(width, height, QImage.Format_RGBA8888)
+    img.fill(0)
+    painter = QPainter(img)
+    renderer.render(painter)
+    painter.end()
+    return np.frombuffer(bytes(img.constBits()), dtype=np.uint8).reshape(
+        height, width, 4
+    )
 
 
 def _bands(s):
@@ -208,6 +234,72 @@ class AnalysisPage(QWidget):
             self._fig_lap,
         ]
 
+    def _cover_fig(self, sid):
+        m = meta.load(prefs.last_dir(DEFAULT_DIR), sid) if sid else {}
+        fig = Figure(figsize=A4_LANDSCAPE, facecolor=theme.BG)
+
+        arr = _svg_array(str(LOGO))
+        if arr is not None:
+            ax_logo = fig.add_axes([0.0, 0.80, 1.0, 0.14])
+            ax_logo.imshow(arr, aspect="equal")
+            ax_logo.set_anchor("C")
+            ax_logo.axis("off")
+
+        ax = fig.add_axes([0.14, 0.10, 0.72, 0.62])
+        ax.axis("off")
+        ax.text(
+            0.0,
+            1.0,
+            run_label(self._run),
+            transform=ax.transAxes,
+            color=theme.TEXT,
+            fontsize=22,
+            fontweight="bold",
+            va="top",
+        )
+        ax.axhline(0.93, color=theme.BORDER, lw=1)
+
+        pressures = "    ".join(
+            f"{p.upper()} {m[k]}"
+            for p, k in (("fl", "p_fl"), ("fr", "p_fr"), ("rl", "p_rl"), ("rr", "p_rr"))
+            if m.get(k)
+        )
+        rows = [
+            ("Date", m.get("date")),
+            ("Track", m.get("track")),
+            ("Driver", m.get("driver")),
+            ("Compound", m.get("compound")),
+            ("Ambient °C", m.get("ambient")),
+            ("Pressures", pressures),
+        ]
+        y = 0.82
+        for label, val in rows:
+            if not val:
+                continue
+            ax.text(
+                0.0, y, label, transform=ax.transAxes, color=theme.MUTED, fontsize=13
+            )
+            ax.text(
+                0.22, y, str(val), transform=ax.transAxes, color=theme.TEXT, fontsize=13
+            )
+            y -= 0.08
+        if m.get("notes"):
+            y -= 0.02
+            ax.text(
+                0.0, y, "Notes", transform=ax.transAxes, color=theme.MUTED, fontsize=13
+            )
+            ax.text(
+                0.22,
+                y,
+                m["notes"],
+                transform=ax.transAxes,
+                color=theme.TEXT,
+                fontsize=13,
+                va="top",
+                wrap=True,
+            )
+        return fig
+
     def _export(self):
         if not self._run:
             QMessageBox.information(self, "Export", "Load a run first.")
@@ -232,15 +324,28 @@ class AnalysisPage(QWidget):
         try:
             if is_png:
                 fig = self._tab_figs()[self._tabs.currentIndex()]
-                fig.savefig(path, facecolor=fig.get_facecolor(), dpi=150)
+                self._save_a4(fig, path=path)
             else:
                 with PdfPages(path) as pdf:
+                    self._save_a4(self._cover_fig(sid), pdf=pdf)
                     for fig in self._tab_figs():
-                        pdf.savefig(fig, facecolor=fig.get_facecolor())
+                        self._save_a4(fig, pdf=pdf)
         except OSError as e:
             QMessageBox.warning(self, "Export failed", str(e))
             return
         QMessageBox.information(self, "Export", f"Saved {path}")
+
+    @staticmethod
+    def _save_a4(fig, pdf=None, path=None):
+        # Force a fixed A4 size + dpi so pages render identically regardless
+        # of whether the tab was ever shown (its live canvas size varies).
+        old = fig.get_size_inches()
+        fig.set_size_inches(A4_LANDSCAPE)
+        if pdf is not None:
+            pdf.savefig(fig, facecolor=fig.get_facecolor(), dpi=200)
+        else:
+            fig.savefig(path, facecolor=fig.get_facecolor(), dpi=200)
+        fig.set_size_inches(old)
 
     def _on_offset(self):
         if not self._run:

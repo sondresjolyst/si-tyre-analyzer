@@ -29,8 +29,10 @@ IN_WINDOW = "#22c55e"
 
 DARK_QSS = f"""
 QWidget {{ background:{BG}; color:{TEXT}; font-size:13px; }}
-QLineEdit, QComboBox, QListWidget, QTableWidget {{
-  background:{SURFACE}; border:1px solid {BORDER}; border-radius:6px; padding:4px; }}
+QLineEdit, QComboBox, QListWidget, QTableWidget, QDateEdit, QPlainTextEdit,
+QAbstractSpinBox {{
+  background:{SURFACE}; border:1px solid {BORDER}; border-radius:6px;
+  padding:4px 6px; }}
 QPushButton {{ background:{ACCENT}; color:{WHITE}; border:0; border-radius:6px;
   padding:6px 12px; font-weight:600; }}
 QPushButton:hover {{ background:{ACCENT_HOVER}; }}
