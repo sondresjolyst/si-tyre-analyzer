@@ -10,6 +10,12 @@ on:
       - edited
       - synchronize
       - reopened
+    paths:
+      - "src/**"
+      - "tools/**"
+      - "test/**"
+      - "lib/**"
+      - ".github/workflows/test.yml"
 
 permissions: {}
 
