@@ -39,6 +39,7 @@ jobs:
           pio test -e native_downsample
           pio test -e native_logformat
           pio test -e native_version
+          pio test -e native_colormap
 
   python-tests:
     name: Python tests

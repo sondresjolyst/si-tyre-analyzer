@@ -1,14 +1,20 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
   "packages": {
     ".": {
       "release-type": "simple",
+      "component": "si-tyre-analyzer",
       "extra-files": [
         {
           "type": "generic",
           "path": "platformio.ini"
         }
       ]
+    },
+    "tools": {
+      "release-type": "python",
+      "component": "si-tyre-analyzer-app"
     }
   }
 }

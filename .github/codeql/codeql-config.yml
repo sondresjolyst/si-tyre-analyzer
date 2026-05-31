@@ -1,0 +1,5 @@
+name: CodeQL config
+
+# Vendored third-party libraries are not our code to fix.
+paths-ignore:
+  - lib/**

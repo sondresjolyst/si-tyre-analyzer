@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
+from . import theme
 from .colors import heat_rgb
 
 
@@ -23,7 +24,7 @@ class _HeatCanvas(QWidget):
 
     def paintEvent(self, _ev):
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor("#111827"))
+        p.fillRect(self.rect(), QColor(theme.BG))
         g = self._grid
         if g is None or g.size == 0:
             return
@@ -44,9 +45,15 @@ class _HeatCanvas(QWidget):
                 rr, gg, bb = heat_rgb(float(g[r, c]), lo, hi)
                 p.fillRect(x0, y0, x1 - x0, y1 - y0, QColor(rr, gg, bb))
                 if r == mid:
-                    p.setPen(QColor("#ffffff"))
-                    p.drawText(x0, y0, x1 - x0, y1 - y0, Qt.AlignCenter,
-                               str(round(float(g[r, c]))))
+                    p.setPen(QColor(theme.WHITE))
+                    p.drawText(
+                        x0,
+                        y0,
+                        x1 - x0,
+                        y1 - y0,
+                        Qt.AlignCenter,
+                        str(round(float(g[r, c]))),
+                    )
 
 
 class TyreView(QWidget):
@@ -63,7 +70,7 @@ class TyreView(QWidget):
         self._canvas = _HeatCanvas()
         self._stats = QLabel("—")
         self._stats.setAlignment(Qt.AlignCenter)
-        self._stats.setStyleSheet("color:#e5e7eb;font-weight:600;")
+        self._stats.setStyleSheet(f"color:{theme.GRID_TEXT};font-weight:600;")
         lay.addWidget(self._title)
         lay.addWidget(self._canvas, 1)
         lay.addWidget(self._stats)
@@ -78,7 +85,8 @@ class TyreView(QWidget):
             return
         self._canvas.setGrid(grid)
         self._stats.setText(
-            f"min {float(np.nanmin(grid)):.1f}°  ·  max {float(np.nanmax(grid)):.1f}°")
+            f"min {float(np.nanmin(grid)):.1f}°  ·  max {float(np.nanmax(grid)):.1f}°"
+        )
 
     def clear(self):
         self.setGrid(None)

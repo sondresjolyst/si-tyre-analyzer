@@ -20,4 +20,4 @@ jobs:
       contents: read
       statuses: write
     with:
-      filter_regex_exclude: (.*CHANGELOG\.md$|docs/workflows/.*|lib/.*)
+      filter_regex_exclude: (.*CHANGELOG\.md$|docs/workflows/.*|lib/.*|tools/live_preview\.html$)
