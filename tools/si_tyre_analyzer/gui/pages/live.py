@@ -6,10 +6,10 @@ import numpy as np
 from PySide6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QVBoxLayout, QWidget)
 
+from ...constants import DEFAULT_HOST, WHEELS
+from .. import theme
 from ..heatmap_widget import TyreView
 from ..net import LivePoller
-
-WHEELS = ["FL", "FR", "RL", "RR"]
 
 
 class LivePage(QWidget):
@@ -20,14 +20,14 @@ class LivePage(QWidget):
         root = QVBoxLayout(self)
         bar = QHBoxLayout()
         bar.addWidget(QLabel("Master host:"))
-        self._host = QLineEdit("192.168.4.1")
+        self._host = QLineEdit(DEFAULT_HOST)
         self._host.setMaximumWidth(180)
         bar.addWidget(self._host)
         self._btn = QPushButton("Connect")
         self._btn.clicked.connect(self._toggle)
         bar.addWidget(self._btn)
         self._status = QLabel("Not connected")
-        self._status.setStyleSheet("color:#9ca3af;")
+        self._status.setStyleSheet(f"color:{theme.MUTED};")
         bar.addWidget(self._status, 1)
         root.addLayout(bar)
 

@@ -8,16 +8,15 @@ matplotlib.use("QtAgg")
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog,
-                               QHBoxLayout, QLabel, QPushButton, QTabWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDoubleSpinBox, QFileDialog, QHBoxLayout, QLabel,
+                               QPushButton, QTabWidget, QVBoxLayout, QWidget)
 
+from ...constants import WHEELS
 from ...lapdata import parse_laps
-from .. import prefs
+from .. import prefs, theme
 from ..colors import tyre_cmap
-from ..runs import DEFAULT_DIR, load_runs, run_label
+from ..widgets import RunSelector
 
-WHEELS = ["FL", "FR", "RL", "RR"]
 POS = {"FL": (0, 0), "FR": (0, 1), "RL": (1, 0), "RR": (1, 1)}
 
 
@@ -49,18 +48,14 @@ def _hint(inner, middle, outer):
 class AnalysisPage(QWidget):
     def __init__(self):
         super().__init__()
-        self._runs = {}
         self._run = {}
         self._laps = []
 
         root = QVBoxLayout(self)
         bar = QHBoxLayout()
-        b_open = QPushButton("Open folder…")
-        b_open.clicked.connect(self._open_folder)
-        bar.addWidget(b_open)
-        self._runsel = QComboBox()
-        self._runsel.currentIndexChanged.connect(self._run_selected)
-        bar.addWidget(self._runsel, 1)
+        self._sel = RunSelector()
+        self._sel.runChanged.connect(self._on_run)
+        bar.addWidget(self._sel, 1)
         bar.addWidget(QLabel("Window °C:"))
         win_lo, win_hi = prefs.window(60, 90)
         self._lo = QDoubleSpinBox()
@@ -82,15 +77,15 @@ class AnalysisPage(QWidget):
         self._off.valueChanged.connect(self._plot_over)
         bar.addWidget(self._off)
         self._lapinfo = QLabel("no laps")
-        self._lapinfo.setStyleSheet("color:#9ca3af;")
+        self._lapinfo.setStyleSheet(f"color:{theme.MUTED};")
         bar.addWidget(self._lapinfo)
         root.addLayout(bar)
 
         self._tabs = QTabWidget()
-        self._fig_over = Figure(facecolor="#111827")
-        self._fig_prof = Figure(facecolor="#111827")
-        self._fig_bal = Figure(facecolor="#111827")
-        self._fig_win = Figure(facecolor="#111827")
+        self._fig_over = Figure(facecolor=theme.BG, layout="constrained")
+        self._fig_prof = Figure(facecolor=theme.BG, layout="constrained")
+        self._fig_bal = Figure(facecolor=theme.BG, layout="constrained")
+        self._fig_win = Figure(facecolor=theme.BG, layout="constrained")
         self._c_over = FigureCanvasQTAgg(self._fig_over)
         self._c_prof = FigureCanvasQTAgg(self._fig_prof)
         self._c_bal = FigureCanvasQTAgg(self._fig_bal)
@@ -118,7 +113,7 @@ class AnalysisPage(QWidget):
         v = QVBoxLayout(w)
         v.setContentsMargins(6, 6, 6, 6)
         cap = QLabel(text)
-        cap.setStyleSheet("color:#9ca3af;")
+        cap.setStyleSheet(f"color:{theme.MUTED};")
         cap.setWordWrap(True)
         v.addWidget(cap)
         v.addWidget(canvas, 1)
@@ -129,39 +124,12 @@ class AnalysisPage(QWidget):
         prefs.set_window(self._lo.value(), self._hi.value())
         self._replot()
 
-    def _open_folder(self):
-        d = QFileDialog.getExistingDirectory(self, "Open runs folder",
-                                             prefs.last_dir(DEFAULT_DIR))
-        if not d:
-            return
-        prefs.set_last_dir(d)
-        self._runs = load_runs(d)
-        first = sorted(self._runs)[0] if self._runs else None
-        self._refresh_combo(first)
-
     def load_run(self, run: dict):
-        if not run:
-            return
-        sid = next(iter(run.values())).session_id
-        self._runs[sid] = run
-        self._refresh_combo(sid)
+        self._sel.load_run(run)
 
-    def _refresh_combo(self, select_sid):
-        self._runsel.blockSignals(True)
-        self._runsel.clear()
-        for sid in sorted(self._runs):
-            self._runsel.addItem(run_label(self._runs[sid]), sid)
-        if select_sid is not None:
-            self._runsel.setCurrentIndex(list(sorted(self._runs)).index(select_sid))
-        self._runsel.blockSignals(False)
-        self._run = self._runs.get(self._runsel.currentData(), {})
+    def _on_run(self, run: dict):
+        self._run = run
         self._replot()
-
-    def _run_selected(self, _idx):
-        sid = self._runsel.currentData()
-        if sid is not None:
-            self._run = self._runs.get(sid, {})
-            self._replot()
 
     def _load_laps(self):
         path, _ = QFileDialog.getOpenFileName(self, "Lap timing CSV", "",
@@ -186,11 +154,11 @@ class AnalysisPage(QWidget):
         fig.clear()
         ax = {}
         for w, (r, c) in POS.items():
-            a = fig.add_subplot(2, 2, r * 2 + c + 1, facecolor="#1f2937")
-            a.set_title(w, color="#f3f4f6", fontsize=10)
-            a.tick_params(colors="#9ca3af", labelsize=8)
+            a = fig.add_subplot(2, 2, r * 2 + c + 1, facecolor=theme.SURFACE)
+            a.set_title(w, color=theme.TEXT, fontsize=10)
+            a.tick_params(colors=theme.MUTED, labelsize=8)
             for sp in a.spines.values():
-                sp.set_color("#374151")
+                sp.set_color(theme.BORDER)
             ax[w] = a
         return ax
 
@@ -203,11 +171,10 @@ class AnalysisPage(QWidget):
             i, m, o = _bands(s)
             vals = [i.mean(), m.mean(), o.mean()]
             a.bar(["inner", "mid", "outer"], vals,
-                  color=["#60a5fa", "#a3a3a3", "#f87171"])
+                  color=[theme.INNER, theme.MID_BAR, theme.OUTER])
             a.set_title(f"{w}  inner−outer {vals[0]-vals[2]:+.1f}°  ·  {_hint(i,m,o)}",
-                        color="#f3f4f6", fontsize=9)
-            a.set_ylabel("°C", color="#9ca3af", fontsize=8)
-        self._fig_prof.tight_layout()
+                        color=theme.TEXT, fontsize=9)
+            a.set_ylabel("°C", color=theme.MUTED, fontsize=8)
         self._c_prof.draw_idle()
 
     def _plot_over(self):
@@ -219,30 +186,29 @@ class AnalysisPage(QWidget):
                 continue
             t = s.t_offsets_ms / 1000.0
             i, m, o = _bands(s)
-            a.axhspan(lo, hi, color="#22c55e", alpha=0.10)
-            a.plot(t, i, label="inner", lw=1.2, color="#60a5fa")
-            a.plot(t, m, label="mid", lw=1.2, color="#d4d4d4")
-            a.plot(t, o, label="outer", lw=1.2, color="#f87171")
+            a.axhspan(lo, hi, color=theme.IN_WINDOW, alpha=0.10)
+            a.plot(t, i, label="inner", lw=1.2, color=theme.INNER)
+            a.plot(t, m, label="mid", lw=1.2, color=theme.MID)
+            a.plot(t, o, label="outer", lw=1.2, color=theme.OUTER)
             off = self._off.value()
             ytop = a.get_ylim()[1]
             for lap in self._laps:
                 x = lap.start_s + off
                 if t[0] <= x <= t[-1]:
-                    a.axvline(x, color="#6b7280", lw=0.6, alpha=0.6)
-                    a.text(x, ytop, str(lap.lap), color="#9ca3af", fontsize=6,
+                    a.axvline(x, color=theme.MUTED_2, lw=0.6, alpha=0.6)
+                    a.text(x, ytop, str(lap.lap), color=theme.MUTED, fontsize=6,
                            ha="left", va="top")
             inwin = np.mean((m >= lo) & (m <= hi)) * 100
-            a.set_title(f"{w}  {inwin:.0f}% in window", color="#f3f4f6",
+            a.set_title(f"{w}  {inwin:.0f}% in window", color=theme.TEXT,
                         fontsize=9)
-            a.legend(fontsize=6, loc="upper right", labelcolor="#f3f4f6",
-                     facecolor="#111827")
-        self._fig_over.tight_layout()
+            a.legend(fontsize=6, loc="upper right", labelcolor=theme.TEXT,
+                     facecolor=theme.BG)
         self._c_over.draw_idle()
 
     def _plot_window(self):
         lo, hi = self._lo.value(), self._hi.value()
         self._fig_win.clear()
-        a = self._fig_win.add_subplot(111, facecolor="#1f2937")
+        a = self._fig_win.add_subplot(111, facecolor=theme.SURFACE)
         present = [w for w in WHEELS if self._run.get(w) is not None]
         y = range(len(present))
         for k, w in enumerate(present):
@@ -250,21 +216,20 @@ class AnalysisPage(QWidget):
             below = float(np.mean(m < lo)) * 100
             inw = float(np.mean((m >= lo) & (m <= hi))) * 100
             above = float(np.mean(m > hi)) * 100
-            a.barh(k, below, color="#60a5fa")
-            a.barh(k, inw, left=below, color="#22c55e")
-            a.barh(k, above, left=below + inw, color="#f87171")
+            a.barh(k, below, color=theme.INNER)
+            a.barh(k, inw, left=below, color=theme.IN_WINDOW)
+            a.barh(k, above, left=below + inw, color=theme.OUTER)
             a.text(inw / 2 + below, k, f"{inw:.0f}%", va="center", ha="center",
-                   color="#0b1220", fontsize=9, fontweight="bold")
+                   color=theme.BG_DEEP, fontsize=9, fontweight="bold")
         a.set_yticks(list(y))
-        a.set_yticklabels(present, color="#f3f4f6")
+        a.set_yticklabels(present, color=theme.TEXT)
         a.set_xlim(0, 100)
-        a.set_xlabel("% of run", color="#9ca3af")
-        a.tick_params(colors="#9ca3af")
+        a.set_xlabel("% of run", color=theme.MUTED)
+        a.tick_params(colors=theme.MUTED)
         for sp in a.spines.values():
-            sp.set_color("#374151")
+            sp.set_color(theme.BORDER)
         a.legend(["below", "in window", "above"], fontsize=7, ncol=3,
-                 loc="upper center", labelcolor="#f3f4f6", facecolor="#111827")
-        self._fig_win.tight_layout()
+                 loc="upper center", labelcolor=theme.TEXT, facecolor=theme.BG)
         self._c_win.draw_idle()
 
     def _plot_balance(self):
@@ -286,7 +251,7 @@ class AnalysisPage(QWidget):
                      aspect="auto")
             a.set_xticks([])
             a.set_yticks([])
-            a.set_title(f"{w}  {avgs[w]:.1f}°", color="#f3f4f6", fontsize=9)
+            a.set_title(f"{w}  {avgs[w]:.1f}°", color=theme.TEXT, fontsize=9)
 
         def avg(*ws):
             xs = [avgs[w] for w in ws if avgs[w] == avgs[w]]
@@ -295,6 +260,5 @@ class AnalysisPage(QWidget):
         fr = avg("FL", "FR") - avg("RL", "RR")
         lr = avg("FL", "RL") - avg("FR", "RR")
         self._fig_bal.suptitle(f"front−rear {fr:+.1f}°    left−right {lr:+.1f}°",
-                               color="#f3f4f6", fontsize=10)
-        self._fig_bal.tight_layout()
+                               color=theme.TEXT, fontsize=10)
         self._c_bal.draw_idle()

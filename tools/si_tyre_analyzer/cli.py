@@ -15,6 +15,7 @@ import glob
 import os
 
 from . import fetch
+from .constants import DEFAULT_HOST
 from .logreader import read_session
 
 
@@ -76,7 +77,7 @@ def main(argv=None):
     sp.add_argument("--save"); sp.set_defaults(fn=_cmd_dashboard)
 
     sp = sub.add_parser("fetch")
-    sp.add_argument("--host", default="192.168.4.1")
+    sp.add_argument("--host", default=DEFAULT_HOST)
     sp.add_argument("--name"); sp.add_argument("--all", action="store_true")
     sp.add_argument("--dest", default="."); sp.set_defaults(fn=_cmd_fetch)
 

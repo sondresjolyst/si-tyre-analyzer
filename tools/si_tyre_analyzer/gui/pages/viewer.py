@@ -3,21 +3,17 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QGridLayout, QHBoxLayout,
-                               QLabel, QPushButton, QSlider, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QComboBox, QGridLayout, QHBoxLayout, QLabel,
+                               QPushButton, QSlider, QVBoxLayout, QWidget)
 
-from .. import prefs
+from ...constants import WHEELS
 from ..heatmap_widget import TyreView
-from ..runs import DEFAULT_DIR, load_runs, run_label
-
-WHEELS = ["FL", "FR", "RL", "RR"]
+from ..widgets import RunSelector
 
 
 class ViewerPage(QWidget):
     def __init__(self):
         super().__init__()
-        self._runs = {}          # sid -> {wheel: SessionData}
         self._run = {}           # current {wheel: SessionData}
         self._n = 0
         self._base_ms = 500.0
@@ -28,12 +24,9 @@ class ViewerPage(QWidget):
 
         root = QVBoxLayout(self)
         bar = QHBoxLayout()
-        b_open = QPushButton("Open folder…")
-        b_open.clicked.connect(self._open_folder)
-        bar.addWidget(b_open)
-        self._runsel = QComboBox()
-        self._runsel.currentIndexChanged.connect(self._run_selected)
-        bar.addWidget(self._runsel, 1)
+        self._sel = RunSelector()
+        self._sel.runChanged.connect(self._on_run)
+        bar.addWidget(self._sel, 1)
         root.addLayout(bar)
 
         grid = QGridLayout()
@@ -61,40 +54,11 @@ class ViewerPage(QWidget):
         root.addLayout(sl)
 
     # ---- loading ----
-    def _open_folder(self):
-        d = QFileDialog.getExistingDirectory(self, "Open runs folder",
-                                             prefs.last_dir(DEFAULT_DIR))
-        if not d:
-            return
-        prefs.set_last_dir(d)
-        self._runs = load_runs(d)
-        first = sorted(self._runs)[0] if self._runs else None
-        self._refresh_combo(first)
-
     def load_run(self, run: dict):
-        """Load a run dict {wheel: SessionData} directly (from the library)."""
-        if not run:
-            return
-        sid = next(iter(run.values())).session_id
-        self._runs[sid] = run
-        self._refresh_combo(sid)
+        self._sel.load_run(run)
 
-    def _refresh_combo(self, select_sid):
-        self._runsel.blockSignals(True)
-        self._runsel.clear()
-        for sid in sorted(self._runs):
-            self._runsel.addItem(run_label(self._runs[sid]), sid)
-        if select_sid is not None:
-            self._runsel.setCurrentIndex(list(sorted(self._runs)).index(select_sid))
-        self._runsel.blockSignals(False)
-        self._run = self._runs.get(self._runsel.currentData(), {})
-        self._setup_frames()
-
-    def _run_selected(self, _idx):
-        sid = self._runsel.currentData()
-        if sid is None:
-            return
-        self._run = self._runs.get(sid, {})
+    def _on_run(self, run: dict):
+        self._run = run
         self._setup_frames()
 
     def _setup_frames(self):

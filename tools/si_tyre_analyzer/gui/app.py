@@ -5,33 +5,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QListWidget,
-                               QStackedWidget, QVBoxLayout, QWidget)
+                               QMessageBox, QPushButton, QStackedWidget,
+                               QVBoxLayout, QWidget)
 
+from . import update
+from .net import Worker
 from .pages.analysis import AnalysisPage
 from .pages.library import LibraryPage
 from .pages.live import LivePage
 from .pages.viewer import ViewerPage
-
-DARK_QSS = """
-QWidget { background:#111827; color:#f3f4f6; font-size:13px; }
-QLineEdit, QComboBox, QListWidget, QTableWidget {
-  background:#1f2937; border:1px solid #374151; border-radius:6px; padding:4px; }
-QPushButton { background:#2563eb; color:#fff; border:0; border-radius:6px;
-  padding:6px 12px; font-weight:600; }
-QPushButton:hover { background:#1d4ed8; }
-QListWidget#nav { background:#0b1220; border:0; font-size:14px; }
-QListWidget#nav::item { padding:12px 16px; }
-QListWidget#nav::item:selected { background:#1f2937; color:#fff; }
-QLabel { background:transparent; }
-QTabWidget::pane { border:1px solid #374151; }
-QTabBar::tab { background:#1f2937; color:#cbd5e1; padding:6px 16px;
-  border:1px solid #374151; border-bottom:0; }
-QTabBar::tab:selected { background:#2563eb; color:#fff; }
-QWidget#header { background:#0b1220; border-bottom:1px solid #1f2937; }
-"""
+from .theme import DARK_QSS
 
 ASSETS = Path(__file__).parent / "assets"
 
@@ -56,6 +43,10 @@ class MainWindow(QWidget):
         logo.setFixedSize(172, 46)
         hb.addWidget(logo)
         hb.addStretch(1)
+        self._update_btn = QPushButton("Check for updates")
+        self._update_btn.setObjectName("ghost")
+        self._update_btn.clicked.connect(lambda: self._check_updates(manual=True))
+        hb.addWidget(self._update_btn)
         root.addWidget(header)
 
         body = QHBoxLayout()
@@ -83,10 +74,63 @@ class MainWindow(QWidget):
         self._nav.setCurrentRow(0)
         self._library.openRun.connect(self._open_run)
 
+        QTimer.singleShot(1500, lambda: self._check_updates(manual=False))
+
     def _open_run(self, run: dict):
         self._viewer.load_run(run)
         self._analysis.load_run(run)
         self._nav.setCurrentRow(2)
+
+    def _check_updates(self, manual: bool):
+        self._update_btn.setEnabled(False)
+        self._update_btn.setText("Checking…")
+        self._chk = Worker(update.check)
+        self._chk.done.connect(lambda rel: self._on_checked(rel, manual))
+        self._chk.failed.connect(lambda err: self._on_check_failed(err, manual))
+        self._chk.start()
+
+    def _reset_update_btn(self):
+        self._update_btn.setEnabled(True)
+        self._update_btn.setText("Check for updates")
+
+    def _on_checked(self, rel, manual: bool):
+        self._reset_update_btn()
+        if rel is None:
+            if manual:
+                QMessageBox.information(
+                    self, "Up to date",
+                    f"You're on the latest version ({update.current_version()}).")
+            return
+        if QMessageBox.question(
+                self, "Update available",
+                f"Version {rel.version} is available "
+                f"(you have {update.current_version()}).\n\n"
+                "Install it now? The app will restart.") != QMessageBox.Yes:
+            return
+        self._update_btn.setEnabled(False)
+        self._update_btn.setText("Updating…")
+        self._upd = Worker(lambda: update.apply(rel))
+        self._upd.done.connect(lambda _: self._on_updated())
+        self._upd.failed.connect(self._on_update_failed)
+        self._upd.start()
+
+    def _on_check_failed(self, err: str, manual: bool):
+        self._reset_update_btn()
+        if manual:
+            QMessageBox.warning(
+                self, "Update check failed",
+                f"Could not check for updates.\n\n{err}")
+
+    def _on_updated(self):
+        QMessageBox.information(
+            self, "Update installed",
+            "The update was installed. The app will now restart.")
+        update.relaunch()
+        QApplication.quit()
+
+    def _on_update_failed(self, err: str):
+        self._reset_update_btn()
+        QMessageBox.warning(self, "Update failed", f"The update failed.\n\n{err}")
 
     def closeEvent(self, ev):
         self._live.close()
