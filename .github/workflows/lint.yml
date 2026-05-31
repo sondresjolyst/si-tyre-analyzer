@@ -9,6 +9,10 @@ on:
       - edited
       - synchronize
       - reopened
+    paths-ignore:
+      - "CHANGELOG.md"
+      - ".release-please-manifest.json"
+      - "platformio.ini"
 
 permissions: {}
 
