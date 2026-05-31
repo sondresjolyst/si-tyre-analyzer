@@ -259,7 +259,7 @@ class AnalysisPage(QWidget):
         )
         ax.axhline(0.93, color=theme.BORDER, lw=1)
 
-        pres = "    ".join(
+        pressures = "    ".join(
             f"{p.upper()} {m[k]}"
             for p, k in (("fl", "p_fl"), ("fr", "p_fr"), ("rl", "p_rl"), ("rr", "p_rr"))
             if m.get(k)
@@ -270,7 +270,7 @@ class AnalysisPage(QWidget):
             ("Driver", m.get("driver")),
             ("Compound", m.get("compound")),
             ("Ambient °C", m.get("ambient")),
-            ("Pressures", pres),
+            ("Pressures", pressures),
         ]
         y = 0.82
         for label, val in rows:
