@@ -20,8 +20,9 @@ from PySide6.QtWidgets import (
 )
 
 from ...constants import DEFAULT_HOST
-from .. import firmware, net, prefs, theme
+from .. import firmware, meta, net, prefs, theme
 from ...fetch import download, download_all, list_sessions
+from ..metadialog import MetaDialog
 from ..runs import DEFAULT_DIR, load_runs, run_label
 
 
@@ -79,6 +80,9 @@ class LibraryPage(QWidget):
         b_open = QPushButton("Open in viewer")
         b_open.clicked.connect(self._open)
         loc.addWidget(b_open)
+        b_info = QPushButton("Edit info…")
+        b_info.clicked.connect(self._edit_info)
+        loc.addWidget(b_info)
         root.addLayout(loc)
         self._runlist = QListWidget()
         root.addWidget(self._runlist, 1)
@@ -234,10 +238,15 @@ class LibraryPage(QWidget):
 
     def _refresh(self):
         prefs.set_last_dir(self._dir.text().strip())
-        self._runs = load_runs(self._dir.text().strip())
+        folder = self._dir.text().strip()
+        self._runs = load_runs(folder)
         self._runlist.clear()
         for sid in sorted(self._runs):
-            it = QListWidgetItem(run_label(self._runs[sid]))
+            label = run_label(self._runs[sid])
+            info = meta.summary(meta.load(folder, sid))
+            if info:
+                label += f"   —   {info}"
+            it = QListWidgetItem(label)
             it.setData(Qt.UserRole, sid)
             self._runlist.addItem(it)
 
@@ -249,3 +258,15 @@ class LibraryPage(QWidget):
         run = self._runs.get(sid)
         if run:
             self.openRun.emit(run)
+
+    def _edit_info(self):
+        it = self._runlist.currentItem()
+        if not it:
+            self._status.setText("Select a run first")
+            return
+        sid = it.data(Qt.UserRole)
+        folder = self._dir.text().strip()
+        dlg = MetaDialog(meta.load(folder, sid), self)
+        if dlg.exec():
+            meta.save(folder, sid, dlg.data())
+            self._refresh()
