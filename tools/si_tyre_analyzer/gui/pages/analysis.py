@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+
 import matplotlib
 
 matplotlib.use("QtAgg")
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import (
@@ -13,6 +16,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTabWidget,
     QVBoxLayout,
@@ -23,6 +27,7 @@ from ...constants import WHEELS
 from ...lapdata import parse_laps
 from .. import prefs, theme
 from ..colors import tyre_cmap
+from ..runs import DEFAULT_DIR
 from ..widgets import RunSelector
 
 POS = {"FL": (0, 0), "FR": (0, 1), "RL": (1, 0), "RR": (1, 1)}
@@ -85,6 +90,9 @@ class AnalysisPage(QWidget):
         self._lapinfo = QLabel("no laps")
         self._lapinfo.setStyleSheet(f"color:{theme.MUTED};")
         top_bar.addWidget(self._lapinfo)
+        b_export = QPushButton("Export report…")
+        b_export.clicked.connect(self._export)
+        top_bar.addWidget(b_export)
         root.addLayout(top_bar)
 
         self._tabs = QTabWidget()
@@ -160,6 +168,45 @@ class AnalysisPage(QWidget):
             f"{len(self._laps)} laps" if self._laps else "no laps parsed"
         )
         self._replot()
+
+    # ---- export ----
+    def _tab_figs(self):
+        # Same order as the tabs were added.
+        return [self._fig_over, self._fig_win, self._fig_prof, self._fig_bal]
+
+    def _export(self):
+        if not self._run:
+            QMessageBox.information(self, "Export", "Load a run first.")
+            return
+        present = [s for s in self._run.values() if s is not None]
+        sid = present[0].session_id if present else None
+        base = f"tyre_report_session_{sid}" if sid else "tyre_report"
+        default = os.path.join(prefs.last_dir(DEFAULT_DIR), base)
+        path, sel = QFileDialog.getSaveFileName(
+            self,
+            "Export report",
+            default,
+            "PDF report (*.pdf);;PNG image (*.png)",
+        )
+        if not path:
+            return
+        is_png = "png" in sel.lower() or path.lower().endswith(".png")
+        if is_png and not path.lower().endswith(".png"):
+            path += ".png"
+        if not is_png and not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        try:
+            if is_png:
+                fig = self._tab_figs()[self._tabs.currentIndex()]
+                fig.savefig(path, facecolor=fig.get_facecolor(), dpi=150)
+            else:
+                with PdfPages(path) as pdf:
+                    for fig in self._tab_figs():
+                        pdf.savefig(fig, facecolor=fig.get_facecolor())
+        except OSError as e:
+            QMessageBox.warning(self, "Export failed", str(e))
+            return
+        QMessageBox.information(self, "Export", f"Saved {path}")
 
     # ---- plotting ----
     def _replot(self):
