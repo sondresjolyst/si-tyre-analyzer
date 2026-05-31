@@ -21,6 +21,7 @@
 #include "controllers/EspNowController.h"
 #include "controllers/LiveDashboard.h"
 #include "controllers/RecordingController.h"
+#include "display/DisplayController.h"
 #include "helpers/ButtonController.h"
 #include "helpers/PRINTHelper.h"
 #include "helpers/WIFIHelper.h"
@@ -48,6 +49,9 @@ SessionLogger gLogger;
 DeviceConfig gConfig;
 LiveDashboard gDashboard;
 EspNowController gEsp;
+#if HAS_DISPLAY
+DisplayController gDisplay;
+#endif
 }  // namespace tyre
 
 using tyre::gConfig;
@@ -61,6 +65,9 @@ static AppState appState = STATE_IDLE;
 static tyre::ITempSensor &sensor = tyre::makeSensor();
 static tyre::RecordingController recorder(&sensor, &gLogger);
 static tyre::ButtonController button(BUTTON_PIN);
+#if BUTTON2_PIN >= 0
+static tyre::ButtonController button2(BUTTON2_PIN);
+#endif
 
 static bool apActive = false;
 static uint32_t gSessionId = 0;
@@ -290,7 +297,12 @@ static void blink(uint32_t period) {
   }
 }
 static void updateLed() {
-  switch (button.stage()) {
+  tyre::ButtonStage st = button.stage();
+#if BUTTON2_PIN >= 0
+  if (button2.stage() > st)
+    st = button2.stage();
+#endif
+  switch (st) {
   case tyre::STAGE_PAIR:
     blink(120);
     return;
@@ -391,6 +403,10 @@ static void handleCommand(String cmd) {
     gConfig.has_sensor = cmd.substring(7).toInt() ? 1 : 0;
     tyre::saveConfig(gConfig);
     Serial.println("OK sensor (reboot to apply)");
+  } else if (cmd.startsWith("display ")) {
+    gConfig.has_display = cmd.substring(8).toInt() ? 1 : 0;
+    tyre::saveConfig(gConfig);
+    Serial.println("OK display (reboot to apply)");
   } else if (cmd.startsWith("car ")) {
     gConfig.group_id =
         static_cast<uint32_t>(strtoul(cmd.substring(4).c_str(), nullptr, 0));
@@ -449,6 +465,12 @@ void setup() {
   button.onTap(toggleRecording);
   button.onPair(enterPairing);
   button.onAp(enterConfigAP);
+#if BUTTON2_PIN >= 0
+  button2.begin();
+  button2.onTap(toggleRecording);
+  button2.onPair(enterPairing);
+  button2.onAp(enterConfigAP);
+#endif
 
   const bool forceAP = (gFlagForceAPNextBoot == FORCE_AP_MAGIC);
   gFlagForceAPNextBoot = 0;
@@ -481,6 +503,11 @@ void setup() {
   if (gConfig.has_sensor && !recorder.beginSensor()) {
     printHelper.log("ERROR", "sensor begin failed");
   }
+#if HAS_DISPLAY
+  if (gConfig.role == tyre::ROLE_MASTER && gConfig.has_display &&
+      !tyre::gDisplay.begin())
+    printHelper.log("ERROR", "display begin failed");
+#endif
   appState = STATE_IDLE;
 
   // A configured-but-unpaired wheel (Car ID set) auto-listens so the car
@@ -494,9 +521,16 @@ void setup() {
 // ── Loop ─────────────────────────────────────────────────────────────────────
 void loop() {
   button.update();
+#if BUTTON2_PIN >= 0
+  button2.update();
+#endif
   gEsp.update();
   pollSerial();
   updateLed();
+#if HAS_DISPLAY
+  if (gConfig.role == tyre::ROLE_MASTER && gConfig.has_display)
+    tyre::gDisplay.render(gDashboard);
+#endif
 
   // Reflect web-/auto-triggered pairing in the app state (for the LED).
   if (gEsp.pairing() && appState == STATE_IDLE)

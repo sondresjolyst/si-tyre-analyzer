@@ -6,6 +6,8 @@
 
 #include <map>
 
+#include "web/Logo.h"
+
 #ifndef VERSION
 #define VERSION "v0.0.0"
 #endif
@@ -42,6 +44,7 @@ font-weight:600;text-decoration:none;margin-left:6px;border:0;cursor:pointer}
 font-size:13px;color:#9ca3af;margin-bottom:4px}
 .runhdr .btn-sm{margin:0;width:auto}
 .link{display:block;margin:8px 0}
+.logo svg{display:block;width:280px;max-width:78%;height:auto;margin:2px 0}
 </style>)";
 
 static String head(const char *title) {
@@ -70,7 +73,9 @@ static String opt(const char *value, const char *label, bool sel) {
 
 String pageRoot(const DeviceConfig &cfg) {
   String h = head("SI Tyre Analyzer");
-  h += "<h1>SI Tyre Analyzer</h1><p class='muted'>Tyre sensor &middot; ";
+  h += "<div class='logo'>";
+  h += kLogo;
+  h += "</div><p class='muted'>Version ";
   h += VERSION;
   h += "</p>";
 
@@ -86,16 +91,23 @@ String pageRoot(const DeviceConfig &cfg) {
        "<input type='text' name='car_name' maxlength='23' value='";
   h += cfg.car_name;
   h += "'>";
-  h += "<label>Role</label><select name='role'>";
+  h += "<label>Role</label>"
+       "<select name='role' id='role' onchange='syncRole()'>";
   h += opt("master", "Dash master", cfg.role == ROLE_MASTER);
   h += opt("slave", "Wheel unit", cfg.role == ROLE_SLAVE);
   h += "</select>";
 
   h += "<label>Records a wheel?</label>"
        "<select name='has_sensor' id='has_sensor' onchange='syncWheel()'>";
-  h += opt("1", "Yes — wheel sensor", cfg.has_sensor == 1);
-  h += opt("0", "No — dash display", cfg.has_sensor == 0);
+  h += opt("1", "Yes", cfg.has_sensor == 1);
+  h += opt("0", "No", cfg.has_sensor == 0);
   h += "</select>";
+
+  h += "<div id='displayRow'><label>Dash display fitted?</label>"
+       "<select name='has_display'>";
+  h += opt("0", "No", cfg.has_display == 0);
+  h += opt("1", "Yes", cfg.has_display == 1);
+  h += "</select></div>";
 
   h += "<div id='wheelRow'><label>Wheel</label><select name='wheel'>";
   h += opt("FL", "Front left", cfg.wheel == WHEEL_FL);
@@ -191,6 +203,9 @@ String pageRoot(const DeviceConfig &cfg) {
   h += "<script>function syncWheel(){document.getElementById('wheelRow')"
        ".style.display=document.getElementById('has_sensor').value==='1'"
        "?'':'none';}syncWheel();"
+       "function syncRole(){document.getElementById('displayRow')"
+       ".style.display=document.getElementById('role').value==='master'"
+       "?'':'none';}syncRole();"
        "function pollPeers(){var el=document.getElementById('paired');"
        "if(!el)return;fetch('/api/peers').then(r=>r.json()).then(d=>{"
        "var t='No wheels paired yet.';"

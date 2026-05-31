@@ -18,6 +18,10 @@ jobs:
     if: github.event_name == 'push'
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
+      fw_release_created: ${{ steps.release.outputs['.--release_created'] }}
+      fw_tag_name: ${{ steps.release.outputs['.--tag_name'] }}
+      app_release_created: ${{ steps.release.outputs['tools--release_created'] }}
+      app_tag_name: ${{ steps.release.outputs['tools--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
         id: release
@@ -37,9 +41,9 @@ jobs:
     name: Build firmware
     runs-on: ubuntu-24.04
     needs: [release-please, test]
-    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true') }}
+    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.fw_release_created == 'true') }}
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -71,3 +75,34 @@ jobs:
           name: ${{ steps.meta.outputs.firmware_name }}
           path: .pio/build/esp32-s3-devkitc-1/${{ steps.meta.outputs.firmware_name }}.bin
           if-no-files-found: error
+
+      - name: Attach firmware to release
+        if: ${{ needs.release-please.outputs.fw_release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.release-please.outputs.fw_tag_name }}" ".pio/build/esp32-s3-devkitc-1/${{ steps.meta.outputs.firmware_name }}.bin" --clobber
+
+  build-app:
+    name: Build desktop app
+    runs-on: ubuntu-24.04
+    needs: [release-please, test]
+    if: ${{ always() && needs.test.result == 'success' && needs.release-please.outputs.app_release_created == 'true' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Build wheel
+        working-directory: tools
+        run: uv build --wheel --out-dir dist
+
+      - name: Attach wheel to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.release-please.outputs.app_tag_name }}" tools/dist/*.whl --clobber
