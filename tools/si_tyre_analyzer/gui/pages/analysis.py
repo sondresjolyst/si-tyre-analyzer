@@ -85,7 +85,7 @@ class AnalysisPage(QWidget):
         self._off = QDoubleSpinBox()
         self._off.setRange(-3600, 3600)
         self._off.setSingleStep(1)
-        self._off.valueChanged.connect(self._plot_over)
+        self._off.valueChanged.connect(self._on_offset)
         top_bar.addWidget(self._off)
         self._lapinfo = QLabel("no laps")
         self._lapinfo.setStyleSheet(f"color:{theme.MUTED};")
@@ -100,15 +100,16 @@ class AnalysisPage(QWidget):
         self._fig_prof = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_bal = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_win = Figure(facecolor=theme.BG, layout="constrained")
+        self._fig_lap = Figure(facecolor=theme.BG, layout="constrained")
         self._c_over = FigureCanvasQTAgg(self._fig_over)
         self._c_prof = FigureCanvasQTAgg(self._fig_prof)
         self._c_bal = FigureCanvasQTAgg(self._fig_bal)
         self._c_win = FigureCanvasQTAgg(self._fig_win)
+        self._c_lap = FigureCanvasQTAgg(self._fig_lap)
         self._tabs.addTab(
             self._captioned(
                 self._c_over,
-                "Tyre temperature over the run vs the target window; lap markers "
-                "from the CSV.",
+                "Tyre temperature over the run vs the target window.",
             ),
             "Over time",
         )
@@ -134,7 +135,32 @@ class AnalysisPage(QWidget):
             ),
             "Balance",
         )
+        self._tabs.addTab(self._lap_panel(), "Per lap")
         root.addWidget(self._tabs, 1)
+
+    def _lap_panel(self):
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(6, 6, 6, 6)
+        cap = QLabel("Average tread temperature per lap per wheel.")
+        cap.setStyleSheet(f"color:{theme.MUTED};")
+        cap.setWordWrap(True)
+        v.addWidget(cap)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Bands:"))
+        self._band_btns = {}
+        for name, default in (("inner", False), ("mid", True), ("outer", False)):
+            b = QPushButton(name)
+            b.setCheckable(True)
+            b.setChecked(default)
+            b.setMaximumWidth(64)
+            b.toggled.connect(self._plot_laps)
+            self._band_btns[name] = b
+            row.addWidget(b)
+        row.addStretch(1)
+        v.addLayout(row)
+        v.addWidget(self._c_lap, 1)
+        return w
 
     def _captioned(self, canvas, text):
         w = QWidget()
@@ -160,7 +186,9 @@ class AnalysisPage(QWidget):
         self._replot()
 
     def _load_laps(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Lap timing CSV", "", "CSV (*.csv)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Lap timing CSV", prefs.last_dir(DEFAULT_DIR), "CSV (*.csv)"
+        )
         if not path:
             return
         self._laps = parse_laps(path)
@@ -172,7 +200,13 @@ class AnalysisPage(QWidget):
     # ---- export ----
     def _tab_figs(self):
         # Same order as the tabs were added.
-        return [self._fig_over, self._fig_win, self._fig_prof, self._fig_bal]
+        return [
+            self._fig_over,
+            self._fig_win,
+            self._fig_prof,
+            self._fig_bal,
+            self._fig_lap,
+        ]
 
     def _export(self):
         if not self._run:
@@ -208,6 +242,12 @@ class AnalysisPage(QWidget):
             return
         QMessageBox.information(self, "Export", f"Saved {path}")
 
+    def _on_offset(self):
+        if not self._run:
+            return
+        self._plot_over()
+        self._plot_laps()
+
     # ---- plotting ----
     def _replot(self):
         if not self._run:
@@ -216,6 +256,7 @@ class AnalysisPage(QWidget):
         self._plot_over()
         self._plot_balance()
         self._plot_window()
+        self._plot_laps()
 
     def _axes(self, fig):
         fig.clear()
@@ -360,3 +401,70 @@ class AnalysisPage(QWidget):
             fontsize=10,
         )
         self._c_bal.draw_idle()
+
+    def _lap_avg(self, t, arr, off):
+        nums = []
+        temps = []
+        for k, lap in enumerate(self._laps):
+            start = lap.start_s + off
+            if k + 1 < len(self._laps):
+                end = self._laps[k + 1].start_s + off
+            else:
+                end = t[-1] + 1.0
+            mask = (t >= start) & (t < end)
+            if mask.any():
+                nums.append(lap.lap)
+                temps.append(float(arr[mask].mean()))
+        return nums, temps
+
+    def _plot_laps(self):
+        self._fig_lap.clear()
+        a = self._fig_lap.add_subplot(111, facecolor=theme.SURFACE)
+        a.tick_params(colors=theme.MUTED)
+        for sp in a.spines.values():
+            sp.set_color(theme.BORDER)
+        if not self._laps:
+            a.text(
+                0.5,
+                0.5,
+                "Load a lap CSV",
+                color=theme.MUTED,
+                ha="center",
+                va="center",
+                transform=a.transAxes,
+            )
+            self._c_lap.draw_idle()
+            return
+        off = self._off.value()
+        colors = {
+            "FL": theme.INNER,
+            "FR": theme.OUTER,
+            "RL": theme.IN_WINDOW,
+            "RR": theme.MID,
+        }
+        # (band name, index into _bands, line style)
+        styles = (("inner", 0, "--"), ("mid", 1, "-"), ("outer", 2, ":"))
+        bands = [b for b in styles if self._band_btns[b[0]].isChecked()]
+        multi = len(bands) > 1
+        for w in WHEELS:
+            s = self._run.get(w)
+            if s is None:
+                continue
+            t = s.t_offsets_ms / 1000.0
+            tri = _bands(s)
+            for name, idx, ls in bands:
+                nums, temps = self._lap_avg(t, tri[idx], off)
+                if temps:
+                    a.plot(
+                        nums,
+                        temps,
+                        marker="o",
+                        lw=1.3,
+                        ls=ls,
+                        color=colors.get(w),
+                        label=f"{w} {name}" if multi else w,
+                    )
+        a.set_xlabel("lap", color=theme.MUTED)
+        a.set_ylabel("°C", color=theme.MUTED)
+        a.legend(fontsize=7, ncol=4, labelcolor=theme.TEXT, facecolor=theme.BG)
+        self._c_lap.draw_idle()
