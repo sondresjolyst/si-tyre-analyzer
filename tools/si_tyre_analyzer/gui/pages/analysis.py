@@ -39,18 +39,14 @@ def _bands(s):
     return inner, middle, outer
 
 
-def _hint(inner, middle, outer):
+def _crown(inner, middle, outer):
     i, m, o = inner.mean(), middle.mean(), outer.mean()
     edges = (i + o) / 2
     if m - edges > 3:
-        return "centre hot · over-inflated → drop pressure"
+        return "centre hot"
     if edges - m > 3:
-        return "edges hot · under-inflated → add pressure"
-    if i - o > 3:
-        return "inner edge hot → reduce camber"
-    if o - i > 3:
-        return "outer edge hot → add camber / check toe"
-    return "even — good"
+        return "shoulders hot"
+    return "flat"
 
 
 class AnalysisPage(QWidget):
@@ -119,8 +115,7 @@ class AnalysisPage(QWidget):
         self._tabs.addTab(
             self._captioned(
                 self._c_prof,
-                "Across-tread temperature (inner / middle / outer) per tyre — "
-                "reads camber & pressure.",
+                "Across-tread temperature (inner / middle / outer) per tyre.",
             ),
             "Profile",
         )
@@ -201,7 +196,7 @@ class AnalysisPage(QWidget):
                 color=[theme.INNER, theme.MID_BAR, theme.OUTER],
             )
             a.set_title(
-                f"{w}  inner−outer {vals[0] - vals[2]:+.1f}°  ·  {_hint(i, m, o)}",
+                f"{w}  inner−outer {vals[0] - vals[2]:+.1f}°  ·  {_crown(i, m, o)}",
                 color=theme.TEXT,
                 fontsize=9,
             )
