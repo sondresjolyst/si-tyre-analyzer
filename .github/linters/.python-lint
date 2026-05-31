@@ -3,9 +3,11 @@
 additional-builtins=env,Import
 
 [TYPECHECK]
-# PySide6's Qt classes live in compiled extension modules pylint can't import;
-# tomllib is stdlib only on 3.11+ (guarded by try/except in update.py).
-ignored-modules=PySide6,tomllib
+# super-linter runs pylint in an isolated container without the project's
+# dependencies, so import resolution for third-party packages always fails
+# there. Listing them keeps first-party import checks while skipping these.
+# (PySide6 is compiled extensions; tomllib is stdlib only on 3.11+.)
+ignored-modules=PySide6,numpy,matplotlib,requests,pytest,tomllib
 
 [MESSAGES CONTROL]
 # Only rules that genuinely don't fit a PySide6 + matplotlib desktop app:
