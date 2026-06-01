@@ -7,6 +7,7 @@ from pathlib import Path
 _ICONS = Path(__file__).parent / "assets" / "icons"
 _CHEVRON = (_ICONS / "chevron.svg").as_posix()
 _CHEVRON_UP = (_ICONS / "chevron-up.svg").as_posix()
+_CHEVRON_RIGHT = (_ICONS / "chevron-right.svg").as_posix()
 
 # Surfaces / chrome
 BG_DEEP = "#0b1220"
@@ -68,6 +69,13 @@ QAbstractSpinBox::down-arrow {{ image:url("{_CHEVRON}"); width:11px; height:11px
 QListWidget#nav {{ background:{BG_DEEP}; border:0; font-size:14px; }}
 QListWidget#nav::item {{ padding:12px 16px; }}
 QListWidget#nav::item:selected {{ background:{SURFACE}; color:{WHITE}; }}
+QTreeView#nav {{ background:{BG_DEEP}; border:0; font-size:14px; outline:0; }}
+QTreeView#nav::item {{ padding:10px 12px; border:0; color:{TEXT_DIM}; }}
+QTreeView#nav::item:hover {{ background:{SURFACE}; }}
+QTreeView#nav::item:selected {{ background:{SURFACE}; color:{WHITE}; }}
+QTreeView#nav::branch {{ background:{BG_DEEP}; }}
+QTreeView#nav::branch:has-children:closed {{ image:url("{_CHEVRON_RIGHT}"); }}
+QTreeView#nav::branch:has-children:open {{ image:url("{_CHEVRON}"); }}
 QLabel {{ background:transparent; }}
 QTabWidget::pane {{ border:1px solid {BORDER}; }}
 QTabBar::tab {{ background:{SURFACE}; color:{TEXT_DIM}; padding:6px 16px;

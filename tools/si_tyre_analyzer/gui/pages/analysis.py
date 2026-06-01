@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
@@ -28,7 +29,7 @@ from ...constants import WHEELS
 from ...lapdata import parse_laps
 from .. import meta, prefs, theme
 from ..colors import tyre_cmap
-from ..icons import tool
+from ..icons import icon, tool
 from ..runs import DEFAULT_DIR, run_label
 from ..widgets import RunSelector
 
@@ -84,6 +85,18 @@ def _crown(inner, middle, outer):
 class AnalysisPage(QWidget):
     """Tread profile, temperature over time, time-in-window, and balance."""
 
+    # (icon, label) per tab, in tab order — also used to build the sidebar.
+    SECTIONS = [
+        ("trend", "Over time"),
+        ("window", "In window"),
+        ("profile", "Profile"),
+        ("balance", "Balance"),
+        ("flag", "Per lap"),
+    ]
+
+    def set_section(self, index: int) -> None:
+        self._tabs.setCurrentIndex(index)
+
     def __init__(self):
         super().__init__()
         self._run = {}
@@ -119,6 +132,8 @@ class AnalysisPage(QWidget):
         root.addLayout(top_bar)
 
         self._tabs = QTabWidget()
+        self._tabs.setIconSize(QSize(16, 16))
+        self._tabs.tabBar().hide()  # sections live in the sidebar now
         self._fig_over = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_prof = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_bal = Figure(facecolor=theme.BG, layout="constrained")
@@ -134,6 +149,7 @@ class AnalysisPage(QWidget):
                 self._c_over,
                 "Tyre temperature over the run vs the target window.",
             ),
+            icon("trend"),
             "Over time",
         )
         self._tabs.addTab(
@@ -142,6 +158,7 @@ class AnalysisPage(QWidget):
                 "Share of the run each tyre spent below, inside, and above the "
                 "target window.",
             ),
+            icon("window"),
             "In window",
         )
         self._tabs.addTab(
@@ -149,6 +166,7 @@ class AnalysisPage(QWidget):
                 self._c_prof,
                 "Across-tread temperature (inner / middle / outer) per tyre.",
             ),
+            icon("profile"),
             "Profile",
         )
         self._tabs.addTab(
@@ -156,9 +174,10 @@ class AnalysisPage(QWidget):
                 self._c_bal,
                 "Run-average temperature per wheel — front/rear & left/right balance.",
             ),
+            icon("balance"),
             "Balance",
         )
-        self._tabs.addTab(self._lap_panel(), "Per lap")
+        self._tabs.addTab(self._lap_panel(), icon("flag"), "Per lap")
         root.addWidget(self._tabs, 1)
 
     def _lap_panel(self):
