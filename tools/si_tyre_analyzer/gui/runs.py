@@ -5,9 +5,19 @@ from __future__ import annotations
 import glob
 import os
 
+from PySide6.QtCore import QStandardPaths
+
 from ..logreader import SessionData, read_session
 
-DEFAULT_DIR = os.path.join(os.path.expanduser("~"), "SI_Tyre_Analyzer_Runs")
+
+def _default_dir() -> str:
+    docs = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.DocumentsLocation
+    ) or os.path.expanduser("~")
+    return os.path.normpath(os.path.join(docs, "SI Tyre Analyzer"))
+
+
+DEFAULT_DIR = _default_dir()
 
 
 def load_runs(folder: str) -> dict[int, dict[str, SessionData]]:

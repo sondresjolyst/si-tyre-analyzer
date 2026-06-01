@@ -256,9 +256,12 @@ class AnalysisPage(QWidget):
 
         arr = _svg_array(str(LOGO))
         if arr is not None:
-            ax_logo = fig.add_axes([0.0, 0.80, 1.0, 0.14])
-            ax_logo.imshow(arr, aspect="equal")
-            ax_logo.set_anchor("C")
+            fig_w, fig_h = A4_LANDSCAPE
+            band_h = 0.12
+            aspect = arr.shape[1] / arr.shape[0]
+            wf = min((band_h * fig_h * aspect) / fig_w, 0.6)
+            ax_logo = fig.add_axes([(1.0 - wf) / 2.0, 0.82, wf, band_h])
+            ax_logo.imshow(arr, aspect="auto")
             ax_logo.axis("off")
 
         ax = fig.add_axes([0.14, 0.10, 0.72, 0.62])
