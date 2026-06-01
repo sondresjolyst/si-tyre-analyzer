@@ -163,8 +163,8 @@ Behind a TLS-intercepting proxy, add `--native-tls`.
 cd tools
 uv run sita info       <run>.bin
 uv run sita heatmap    <run>.bin --save out.mp4
-uv run sita dashboard  ~/SI_Tyre_Analyzer_Runs
-uv run sita fetch --host 192.168.4.1 --all --dest ~/SI_Tyre_Analyzer_Runs
+uv run sita dashboard  ~/Documents/SI\ Tyre\ Analyzer
+uv run sita fetch --host 192.168.4.1 --all --dest ~/Documents/SI\ Tyre\ Analyzer
 ```
 
 ### Tests
