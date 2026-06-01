@@ -28,6 +28,7 @@ class ViewerPage(QWidget):
         self._n = 0
         self._base_ms = 500.0
         self._speed = 1
+        self.setFocusPolicy(Qt.StrongFocus)
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._advance)
@@ -50,6 +51,8 @@ class ViewerPage(QWidget):
         sl = QHBoxLayout()
         self._play = QPushButton("Play")
         self._play.setFixedWidth(72)
+        self._play.setFocusPolicy(Qt.NoFocus)
+        self._play.setToolTip("Play / pause (Space)")
         self._play.clicked.connect(self._toggle_play)
         sl.addWidget(self._play)
         self._spd = QComboBox()
@@ -80,6 +83,33 @@ class ViewerPage(QWidget):
         self._slider.setRange(0, max(0, self._n - 1))
         self._slider.setValue(0)
         self._show_frame(0)
+
+    # ---- keyboard ----
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        self.setFocus()
+
+    def keyPressEvent(self, ev):
+        key = ev.key()
+        if key == Qt.Key_Space:
+            self._toggle_play()
+        elif key == Qt.Key_Left:
+            self._step(-1)
+        elif key == Qt.Key_Right:
+            self._step(1)
+        elif key == Qt.Key_Home:
+            self._slider.setValue(0)
+        elif key == Qt.Key_End:
+            self._slider.setValue(max(0, self._n - 1))
+        else:
+            super().keyPressEvent(ev)
+            return
+        ev.accept()
+
+    def _step(self, delta: int):
+        if self._n:
+            cur = self._slider.value()
+            self._slider.setValue(max(0, min(self._n - 1, cur + delta)))
 
     # ---- playback ----
     def _toggle_play(self):
