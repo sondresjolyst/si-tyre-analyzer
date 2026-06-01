@@ -161,10 +161,10 @@ Behind a TLS-intercepting proxy, add `--native-tls`.
 
 ```bash
 cd tools
-uv run si-tyre info       <run>.bin
-uv run si-tyre heatmap    <run>.bin --save out.mp4
-uv run si-tyre dashboard  ~/SI_Tyre_Analyzer_Runs
-uv run si-tyre fetch --host 192.168.4.1 --all --dest ~/SI_Tyre_Analyzer_Runs
+uv run sita info       <run>.bin
+uv run sita heatmap    <run>.bin --save out.mp4
+uv run sita dashboard  ~/SI_Tyre_Analyzer_Runs
+uv run sita fetch --host 192.168.4.1 --all --dest ~/SI_Tyre_Analyzer_Runs
 ```
 
 ### Tests

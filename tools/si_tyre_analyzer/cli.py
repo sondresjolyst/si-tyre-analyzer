@@ -1,11 +1,11 @@
 """SI Tyre Analyzer CLI.
 
 Examples:
-  si-tyre info FL_12345.bin
-  si-tyre heatmap FL_12345.bin --save out.mp4
-  si-tyre timeseries FL_12345.bin
-  si-tyre dashboard ./sessions
-  si-tyre fetch --host 192.168.4.1 --all --dest ./sessions
+  sita info FL_12345.bin
+  sita heatmap FL_12345.bin --save out.mp4
+  sita timeseries FL_12345.bin
+  sita dashboard ./sessions
+  sita fetch --host 192.168.4.1 --all --dest ./sessions
 """
 
 from __future__ import annotations
@@ -56,6 +56,12 @@ def _cmd_dashboard(args):
     dashboard([s for s in sessions if s.session_id == sid], save=args.save)
 
 
+def _cmd_make_icon(args):
+    from .gui.iconize import render_ico
+
+    print(render_ico(args.dest))
+
+
 def _cmd_fetch(args):
     if args.all:
         for p in fetch.download_all(args.host, args.dest):
@@ -68,7 +74,7 @@ def _cmd_fetch(args):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="si-tyre")
+    p = argparse.ArgumentParser(prog="sita")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("info")
@@ -89,6 +95,10 @@ def main(argv=None):
     sp.add_argument("dir")
     sp.add_argument("--save")
     sp.set_defaults(fn=_cmd_dashboard)
+
+    sp = sub.add_parser("make-icon")
+    sp.add_argument("dest")
+    sp.set_defaults(fn=_cmd_make_icon)
 
     sp = sub.add_parser("fetch")
     sp.add_argument("--host", default=DEFAULT_HOST)

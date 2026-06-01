@@ -30,10 +30,14 @@ uv tool install --force $tmp
 
 $exe = (Get-Command si-tyre-analyzer -ErrorAction SilentlyContinue).Source
 if ($exe) {
+  $ico = Join-Path $env:LOCALAPPDATA "si-tyre-analyzer\app.ico"
+  & sita make-icon $ico | Out-Null
+
   $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "SI Tyre Analyzer.lnk"
   $shell = New-Object -ComObject WScript.Shell
   $shortcut = $shell.CreateShortcut($lnk)
   $shortcut.TargetPath = $exe
+  if (Test-Path $ico) { $shortcut.IconLocation = $ico }
   $shortcut.Save()
   Write-Host "Created desktop shortcut: $lnk"
 }

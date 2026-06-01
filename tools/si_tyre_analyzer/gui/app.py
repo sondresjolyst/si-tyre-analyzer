@@ -140,10 +140,9 @@ class MainWindow(QWidget):
     def _on_updated(self):
         QMessageBox.information(
             self,
-            "Update installed",
-            "The update was installed. The app will now restart.",
+            "Updating",
+            "The app will now close to finish updating, then reopen.",
         )
-        update.relaunch()
         QApplication.quit()
 
     def _on_update_failed(self, err: str):

@@ -93,16 +93,53 @@ def check() -> Release | None:
 
 
 def apply(release: Release) -> None:
-    """Download the wheel and (re)install the tool over the current version."""
+    """Download the wheel and hand off install to a detached helper.
+
+    The running launcher locks its own exe on Windows, so uv cannot replace
+    the entrypoint while the app is open. The helper waits for this process to
+    exit, runs ``uv tool install``, then relaunches the app.
+    """
     uv = shutil.which("uv")
     if not uv:
         raise RuntimeError("uv was not found on PATH; cannot self-update.")
     tmp = tempfile.mkdtemp(prefix="sita-update-")
     dest = os.path.join(tmp, release.wheel_url.rsplit("/", 1)[-1])
     urllib.request.urlretrieve(release.wheel_url, dest)
-    subprocess.run([uv, "tool", "install", "--force", dest], check=True)
+    _spawn_updater(uv, dest, tmp)
 
 
-def relaunch() -> None:
+def _spawn_updater(uv: str, wheel: str, tmp: str) -> None:
+    pid = os.getpid()
     exe = shutil.which(DIST_NAME) or sys.argv[0]
-    subprocess.Popen([exe], close_fds=True)
+    log = os.path.join(tmp, "update.log")
+
+    if os.name == "nt":
+        script = os.path.join(tmp, "update.ps1")
+        Path(script).write_text(
+            f"try {{ Wait-Process -Id {pid} -ErrorAction SilentlyContinue }} "
+            f"catch {{}}\n"
+            f"& '{uv}' tool install --force '{wheel}' *> '{log}'\n"
+            f"Start-Process '{exe}'\n",
+            encoding="utf-8",
+        )
+        subprocess.Popen(
+            [
+                "powershell",
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                script,
+            ],
+            creationflags=0x00000008 | 0x00000200,  # DETACHED | NEW_PROCESS_GROUP
+            close_fds=True,
+        )
+    else:
+        script = (
+            f"while kill -0 {pid} 2>/dev/null; do sleep 0.3; done\n"
+            f"'{uv}' tool install --force '{wheel}' >'{log}' 2>&1\n"
+            f"'{exe}' &\n"
+        )
+        subprocess.Popen(["sh", "-c", script], start_new_session=True, close_fds=True)
