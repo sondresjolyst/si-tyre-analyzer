@@ -2,12 +2,36 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QListWidget,
+    QWidget,
+)
 
-from . import prefs
+from . import prefs, theme
 from .icons import tool
 from .runs import DEFAULT_DIR, load_runs, run_label
+
+
+class HintListWidget(QListWidget):
+    """A list that shows centered placeholder text while it is empty."""
+
+    def __init__(self, placeholder: str = ""):
+        super().__init__()
+        self._placeholder = placeholder
+
+    def paintEvent(self, ev):
+        super().paintEvent(ev)
+        if self.count() == 0 and self._placeholder:
+            painter = QPainter(self.viewport())
+            painter.setPen(QColor(theme.MUTED))
+            rect = self.viewport().rect().adjusted(24, 24, -24, -24)
+            painter.drawText(rect, Qt.AlignCenter | Qt.TextWordWrap, self._placeholder)
+            painter.end()
 
 
 class RunSelector(QWidget):

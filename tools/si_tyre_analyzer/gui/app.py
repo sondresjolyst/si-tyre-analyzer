@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import update
+from . import prefs, update
 from .net import Worker
 from .pages.analysis import AnalysisPage
 from .pages.library import LibraryPage
@@ -38,6 +38,9 @@ class MainWindow(QWidget):
         self.setWindowTitle("SI Tyre Analyzer")
         self.setWindowIcon(QIcon(str(ASSETS / "si_tyre_mark.svg")))
         self.resize(960, 680)
+        geo = prefs.geometry()
+        if geo:
+            self.restoreGeometry(geo)
         self.setAcceptDrops(True)
 
         root = QVBoxLayout(self)
@@ -172,6 +175,7 @@ class MainWindow(QWidget):
             ev.acceptProposedAction()
 
     def closeEvent(self, ev):
+        prefs.set_geometry(self.saveGeometry())
         self._live.close()
         super().closeEvent(ev)
 

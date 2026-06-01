@@ -19,11 +19,18 @@ def set_last_dir(path: str) -> None:
 
 def window(default_lo: float, default_hi: float) -> tuple[float, float]:
     s = _s()
-    return (float(s.value("win_lo", default_lo)),
-            float(s.value("win_hi", default_hi)))
+    return (float(s.value("win_lo", default_lo)), float(s.value("win_hi", default_hi)))
 
 
 def set_window(lo: float, hi: float) -> None:
     s = _s()
     s.setValue("win_lo", lo)
     s.setValue("win_hi", hi)
+
+
+def geometry():
+    return _s().value("geometry")
+
+
+def set_geometry(data) -> None:
+    _s().setValue("geometry", data)
