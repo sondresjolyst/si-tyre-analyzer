@@ -64,11 +64,13 @@ class LivePage(QWidget):
             self._poller.wait(2000)
             self._poller = None
         self._btn.setToolTip("Connect")
+        self._status.setStyleSheet(f"color:{theme.MUTED};")
         self._status.setText("Not connected")
 
     def _on_data(self, d: dict):
         cols, rows = int(d.get("cols", 0)), int(d.get("rows", 0))
         wheels = d.get("wheels", {})
+        self._status.setStyleSheet(f"color:{theme.IN_WINDOW};")
         self._status.setText(f"Connected — {len(wheels)} wheel(s) live")
         for w, tv in self._tyres.items():
             wd = wheels.get(w)

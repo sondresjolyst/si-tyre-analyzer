@@ -10,11 +10,11 @@ import sys
 from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
     QListWidgetItem,
     QMenu,
     QMessageBox,
@@ -29,6 +29,7 @@ from ...fetch import download, download_all, list_sessions
 from ..icons import tool as _tool
 from ..metadialog import MetaDialog
 from ..runs import DEFAULT_DIR, load_runs, run_label
+from ..widgets import HintListWidget
 
 
 def _reveal_in_file_manager(path: str) -> None:
@@ -75,7 +76,9 @@ class LibraryPage(QWidget):
         dev.addWidget(self._b_fw)
         dev.addStretch(1)
         root.addLayout(dev)
-        self._devlist = QListWidget()
+        self._devlist = HintListWidget(
+            "Enter the device host, then tap Show device sessions."
+        )
         self._devlist.itemDoubleClicked.connect(self._download_item)
         root.addWidget(self._devlist)
 
@@ -87,7 +90,14 @@ class LibraryPage(QWidget):
         loc.addWidget(_tool("folder", "Choose library folder…", self._browse))
         loc.addWidget(_tool("refresh", "Refresh", self._refresh))
         root.addLayout(loc)
-        self._runlist = QListWidget()
+        self._search = QLineEdit()
+        self._search.setPlaceholderText("Search runs…")
+        self._search.setClearButtonEnabled(True)
+        self._search.textChanged.connect(self._apply_filter)
+        root.addWidget(self._search)
+        self._runlist = HintListWidget(
+            "No runs yet — drop .bin files here, or download from a device."
+        )
         self._runlist.itemDoubleClicked.connect(lambda _: self._open())
         self._runlist.setContextMenuPolicy(Qt.CustomContextMenu)
         self._runlist.customContextMenuRequested.connect(self._run_menu)
@@ -100,13 +110,30 @@ class LibraryPage(QWidget):
         self._runs = {}
         self._refresh()
 
+    # ---- status ----
+    _STATUS_COLORS = {"info": theme.MUTED, "ok": theme.IN_WINDOW, "error": theme.OUTER}
+
+    def _set_status(self, text: str, level: str = "info") -> None:
+        color = self._STATUS_COLORS.get(level, theme.MUTED)
+        self._status.setStyleSheet(f"color:{color};")
+        self._status.setText(text)
+
     # ---- device ----
     def _run_worker(self, fn, on_done):
-        self._status.setText("Working…")
+        self._set_status("Working…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
         self._worker = net.Worker(fn)
+        self._worker.done.connect(self._worker_done)
         self._worker.done.connect(on_done)
-        self._worker.failed.connect(lambda m: self._status.setText(f"Error: {m}"))
+        self._worker.failed.connect(self._worker_failed)
         self._worker.start()
+
+    def _worker_done(self, *_):
+        QApplication.restoreOverrideCursor()
+
+    def _worker_failed(self, msg):
+        QApplication.restoreOverrideCursor()
+        self._set_status(f"Error: {msg}", "error")
 
     def _open_config(self):
         host = self._host.text().strip() or DEFAULT_HOST
@@ -116,7 +143,7 @@ class LibraryPage(QWidget):
     def _update_fw(self):
         host = self._host.text().strip() or DEFAULT_HOST
         self._b_fw.setEnabled(False)
-        self._status.setText("Checking for firmware…")
+        self._set_status("Checking for firmware…")
         self._fwk = net.Worker(lambda: firmware.check(host))
         self._fwk.done.connect(lambda rel: self._fw_checked(host, rel))
         self._fwk.failed.connect(self._fw_failed)
@@ -128,7 +155,7 @@ class LibraryPage(QWidget):
     def _fw_checked(self, host, rel):
         if rel is None:
             self._reset_fw_btn()
-            self._status.setText("Firmware up to date")
+            self._set_status("Firmware up to date", "ok")
             QMessageBox.information(
                 self,
                 "Up to date",
@@ -147,16 +174,16 @@ class LibraryPage(QWidget):
             != QMessageBox.Yes
         ):
             self._reset_fw_btn()
-            self._status.setText("")
+            self._set_status("")
             return
-        self._status.setText("Pushing firmware to wheels…")
+        self._set_status("Pushing firmware to wheels…")
         self._fwc = net.Worker(lambda: firmware.cascade(host, rel))
         self._fwc.done.connect(lambda _: self._fw_cascaded(host, rel))
         self._fwc.failed.connect(self._fw_failed)
         self._fwc.start()
 
     def _fw_cascaded(self, host, rel):
-        self._status.setText("Wheels updating over the air")
+        self._set_status("Wheels updating over the air")
         if (
             QMessageBox.question(
                 self,
@@ -176,7 +203,7 @@ class LibraryPage(QWidget):
 
     def _fw_master_done(self):
         self._reset_fw_btn()
-        self._status.setText("Master rebooting")
+        self._set_status("Master rebooting", "ok")
         QMessageBox.information(
             self,
             "Master updating",
@@ -186,7 +213,7 @@ class LibraryPage(QWidget):
 
     def _fw_failed(self, msg):
         self._reset_fw_btn()
-        self._status.setText(f"Error: {msg}")
+        self._set_status(f"Error: {msg}", "error")
         QMessageBox.warning(self, "Firmware update failed", msg)
 
     def _list_device(self):
@@ -202,14 +229,14 @@ class LibraryPage(QWidget):
             )
             it.setData(Qt.UserRole, s.get("name", ""))
             self._devlist.addItem(it)
-        self._status.setText(f"{len(sessions)} session(s) on device")
+        self._set_status(f"{len(sessions)} session(s) on device", "ok")
 
     def _download_selected(self):
         self._download_item(self._devlist.currentItem())
 
     def _download_item(self, it):
         if not it:
-            self._status.setText("Select a session first")
+            self._set_status("Select a session first")
             return
         name = it.data(Qt.UserRole)
         if not name:
@@ -228,7 +255,7 @@ class LibraryPage(QWidget):
         self._run_worker(lambda: download_all(host, dest), self._after_download)
 
     def _after_download(self, paths):
-        self._status.setText(f"Downloaded {len(paths)} file(s)")
+        self._set_status(f"Downloaded {len(paths)} file(s)", "ok")
         self._refresh()
 
     # ---- local ----
@@ -251,6 +278,13 @@ class LibraryPage(QWidget):
             it = QListWidgetItem(label)
             it.setData(Qt.UserRole, sid)
             self._runlist.addItem(it)
+        self._apply_filter()
+
+    def _apply_filter(self):
+        query = self._search.text().strip().lower()
+        for i in range(self._runlist.count()):
+            it = self._runlist.item(i)
+            it.setHidden(bool(query) and query not in it.text().lower())
 
     def _open(self):
         it = self._runlist.currentItem()
@@ -264,7 +298,7 @@ class LibraryPage(QWidget):
     def _edit_info(self):
         it = self._runlist.currentItem()
         if not it:
-            self._status.setText("Select a run first")
+            self._set_status("Select a run first")
             return
         sid = it.data(Qt.UserRole)
         folder = self._dir.text().strip()
@@ -331,5 +365,5 @@ class LibraryPage(QWidget):
                 n += 1
             except OSError:
                 pass
-        self._status.setText(f"Imported {n} file(s)")
+        self._set_status(f"Imported {n} file(s)", "ok")
         self._refresh()
