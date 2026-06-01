@@ -38,6 +38,7 @@ class MainWindow(QWidget):
         self.setWindowTitle("SI Tyre Analyzer")
         self.setWindowIcon(QIcon(str(ASSETS / "si_tyre_mark.svg")))
         self.resize(960, 680)
+        self.setAcceptDrops(True)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -148,6 +149,27 @@ class MainWindow(QWidget):
     def _on_update_failed(self, err: str):
         self._reset_update_btn()
         QMessageBox.warning(self, "Update failed", f"The update failed.\n\n{err}")
+
+    @staticmethod
+    def _dropped_bins(mime) -> list[str]:
+        if not mime.hasUrls():
+            return []
+        return [
+            u.toLocalFile()
+            for u in mime.urls()
+            if u.toLocalFile().lower().endswith(".bin")
+        ]
+
+    def dragEnterEvent(self, ev):
+        if self._dropped_bins(ev.mimeData()):
+            ev.acceptProposedAction()
+
+    def dropEvent(self, ev):
+        paths = self._dropped_bins(ev.mimeData())
+        if paths:
+            self._nav.setCurrentRow(0)
+            self._library.import_files(paths)
+            ev.acceptProposedAction()
 
     def closeEvent(self, ev):
         self._live.close()

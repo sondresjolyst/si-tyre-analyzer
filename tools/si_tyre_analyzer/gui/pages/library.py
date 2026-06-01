@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
 
 from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
@@ -13,6 +16,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
@@ -24,6 +28,16 @@ from .. import firmware, meta, net, prefs, theme
 from ...fetch import download, download_all, list_sessions
 from ..metadialog import MetaDialog
 from ..runs import DEFAULT_DIR, load_runs, run_label
+
+
+def _reveal_in_file_manager(path: str) -> None:
+    path = os.path.normpath(path)
+    if sys.platform.startswith("win"):
+        subprocess.Popen(["explorer", f"/select,{path}"])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", path])
+    else:
+        subprocess.Popen(["xdg-open", os.path.dirname(path) or "."])
 
 
 class LibraryPage(QWidget):
@@ -85,6 +99,9 @@ class LibraryPage(QWidget):
         loc.addWidget(b_info)
         root.addLayout(loc)
         self._runlist = QListWidget()
+        self._runlist.itemDoubleClicked.connect(lambda _: self._open())
+        self._runlist.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._runlist.customContextMenuRequested.connect(self._run_menu)
         root.addWidget(self._runlist, 1)
 
         self._status = QLabel("")
@@ -270,3 +287,64 @@ class LibraryPage(QWidget):
         if dlg.exec():
             meta.save(folder, sid, dlg.data())
             self._refresh()
+
+    def _run_menu(self, pos):
+        it = self._runlist.itemAt(pos)
+        if not it:
+            return
+        self._runlist.setCurrentItem(it)
+        menu = QMenu(self)
+        menu.addAction("Open in viewer", self._open)
+        menu.addAction("Edit info…", self._edit_info)
+        menu.addAction("Reveal in folder", self._reveal)
+        menu.addSeparator()
+        menu.addAction("Delete run", self._delete_run)
+        menu.exec(self._runlist.mapToGlobal(pos))
+
+    def _run_paths(self, sid) -> list[str]:
+        return [s.path for s in (self._runs.get(sid) or {}).values() if s.path]
+
+    def _reveal(self):
+        it = self._runlist.currentItem()
+        if not it:
+            return
+        paths = self._run_paths(it.data(Qt.UserRole))
+        target = paths[0] if paths else self._dir.text().strip()
+        _reveal_in_file_manager(target)
+
+    def _delete_run(self):
+        it = self._runlist.currentItem()
+        if not it:
+            return
+        sid = it.data(Qt.UserRole)
+        paths = self._run_paths(sid)
+        if (
+            QMessageBox.question(
+                self,
+                "Delete run",
+                f"Delete {len(paths)} file(s) for this run? This cannot be undone.",
+            )
+            != QMessageBox.Yes
+        ):
+            return
+        for p in paths:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        meta.delete(self._dir.text().strip(), sid)
+        self._refresh()
+
+    def import_files(self, paths):
+        """Copy dropped .bin files into the library folder."""
+        dest = self._dir.text().strip()
+        os.makedirs(dest, exist_ok=True)
+        n = 0
+        for p in paths:
+            try:
+                shutil.copy2(p, os.path.join(dest, os.path.basename(p)))
+                n += 1
+            except OSError:
+                pass
+        self._status.setText(f"Imported {n} file(s)")
+        self._refresh()
