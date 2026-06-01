@@ -106,6 +106,8 @@ see [docs/updating.md](docs/updating.md).
 
 ## The device, in detail
 
+For mounting and aiming the sensors, see [docs/mounting.md](docs/mounting.md).
+
 **One firmware for every unit.** All five units run the same
 `firmware_si_tyre_analyzer_v<ver>.bin`; role (master/wheel), wheel position and
 whether a sensor is fitted are settings stored on the device and changed from its

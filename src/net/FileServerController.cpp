@@ -151,6 +151,10 @@ static void handleConfig() {
     gConfig.has_sensor = server.arg("has_sensor").toInt() ? 1 : 0;
   if (server.hasArg("has_display"))
     gConfig.has_display = server.arg("has_display").toInt() ? 1 : 0;
+  if (server.hasArg("flip_x"))
+    gConfig.flip_x = server.arg("flip_x").toInt() ? 1 : 0;
+  if (server.hasArg("flip_y"))
+    gConfig.flip_y = server.arg("flip_y").toInt() ? 1 : 0;
   if (server.hasArg("channel"))
     gConfig.channel = static_cast<uint8_t>(server.arg("channel").toInt());
   if (server.hasArg("group_id"))
