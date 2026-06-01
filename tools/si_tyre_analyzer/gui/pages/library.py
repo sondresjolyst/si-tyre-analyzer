@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMenu,
     QMessageBox,
-    QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 from ...constants import DEFAULT_HOST
 from .. import firmware, meta, net, prefs, theme
 from ...fetch import download, download_all, list_sessions
+from ..icons import tool as _tool
 from ..metadialog import MetaDialog
 from ..runs import DEFAULT_DIR, load_runs, run_label
 
@@ -59,20 +60,18 @@ class LibraryPage(QWidget):
         self._host = QLineEdit(DEFAULT_HOST)
         self._host.setMaximumWidth(180)
         dev.addWidget(self._host)
-        b_list = QPushButton("List sessions")
-        b_list.clicked.connect(self._list_device)
-        dev.addWidget(b_list)
-        b_dl1 = QPushButton("Download selected")
-        b_dl1.clicked.connect(self._download_selected)
-        dev.addWidget(b_dl1)
-        b_dl = QPushButton("Download all")
-        b_dl.clicked.connect(self._download_all)
+        dev.addWidget(_tool("connect", "Show device sessions", self._list_device))
+
+        b_dl = _tool("download", "Download…")
+        dl_menu = QMenu(b_dl)
+        dl_menu.addAction("Download selected", self._download_selected)
+        dl_menu.addAction("Download all", self._download_all)
+        b_dl.setMenu(dl_menu)
+        b_dl.setPopupMode(QToolButton.InstantPopup)
         dev.addWidget(b_dl)
-        b_cfg = QPushButton("Configure…")
-        b_cfg.clicked.connect(self._open_config)
-        dev.addWidget(b_cfg)
-        self._b_fw = QPushButton("Update firmware…")
-        self._b_fw.clicked.connect(self._update_fw)
+
+        dev.addWidget(_tool("config", "Configure device…", self._open_config))
+        self._b_fw = _tool("firmware", "Update firmware…", self._update_fw)
         dev.addWidget(self._b_fw)
         dev.addStretch(1)
         root.addLayout(dev)
@@ -85,18 +84,8 @@ class LibraryPage(QWidget):
         loc = QHBoxLayout()
         self._dir = QLineEdit(prefs.last_dir(DEFAULT_DIR))
         loc.addWidget(self._dir, 1)
-        b_browse = QPushButton("Browse…")
-        b_browse.clicked.connect(self._browse)
-        loc.addWidget(b_browse)
-        b_refresh = QPushButton("Refresh")
-        b_refresh.clicked.connect(self._refresh)
-        loc.addWidget(b_refresh)
-        b_open = QPushButton("Open in viewer")
-        b_open.clicked.connect(self._open)
-        loc.addWidget(b_open)
-        b_info = QPushButton("Edit info…")
-        b_info.clicked.connect(self._edit_info)
-        loc.addWidget(b_info)
+        loc.addWidget(_tool("folder", "Choose library folder…", self._browse))
+        loc.addWidget(_tool("refresh", "Refresh", self._refresh))
         root.addLayout(loc)
         self._runlist = QListWidget()
         self._runlist.itemDoubleClicked.connect(lambda _: self._open())
@@ -127,7 +116,6 @@ class LibraryPage(QWidget):
     def _update_fw(self):
         host = self._host.text().strip() or DEFAULT_HOST
         self._b_fw.setEnabled(False)
-        self._b_fw.setText("Checking…")
         self._status.setText("Checking for firmware…")
         self._fwk = net.Worker(lambda: firmware.check(host))
         self._fwk.done.connect(lambda rel: self._fw_checked(host, rel))
@@ -136,7 +124,6 @@ class LibraryPage(QWidget):
 
     def _reset_fw_btn(self):
         self._b_fw.setEnabled(True)
-        self._b_fw.setText("Update firmware…")
 
     def _fw_checked(self, host, rel):
         if rel is None:
@@ -162,7 +149,6 @@ class LibraryPage(QWidget):
             self._reset_fw_btn()
             self._status.setText("")
             return
-        self._b_fw.setText("Updating…")
         self._status.setText("Pushing firmware to wheels…")
         self._fwc = net.Worker(lambda: firmware.cascade(host, rel))
         self._fwc.done.connect(lambda _: self._fw_cascaded(host, rel))
@@ -183,7 +169,6 @@ class LibraryPage(QWidget):
         ):
             self._reset_fw_btn()
             return
-        self._b_fw.setText("Flashing master…")
         self._fwm = net.Worker(lambda: firmware.flash_master(host, rel))
         self._fwm.done.connect(lambda _: self._fw_master_done())
         self._fwm.failed.connect(self._fw_failed)

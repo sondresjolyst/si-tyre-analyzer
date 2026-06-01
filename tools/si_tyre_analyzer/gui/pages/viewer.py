@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from ...constants import WHEELS
 from ..heatmap_widget import TyreView
+from ..icons import icon, tool
 from ..widgets import RunSelector
 
 
@@ -49,11 +49,8 @@ class ViewerPage(QWidget):
         root.addLayout(grid, 1)
 
         sl = QHBoxLayout()
-        self._play = QPushButton("Play")
-        self._play.setFixedWidth(72)
+        self._play = tool("play", "Play / pause (Space)", self._toggle_play)
         self._play.setFocusPolicy(Qt.NoFocus)
-        self._play.setToolTip("Play / pause (Space)")
-        self._play.clicked.connect(self._toggle_play)
         sl.addWidget(self._play)
         self._spd = QComboBox()
         self._spd.addItems(["1x", "2x", "4x"])
@@ -115,10 +112,10 @@ class ViewerPage(QWidget):
     def _toggle_play(self):
         if self._timer.isActive():
             self._timer.stop()
-            self._play.setText("Play")
+            self._play.setIcon(icon("play"))
         elif self._n:
             self._timer.start(int(self._base_ms / self._speed))
-            self._play.setText("Pause")
+            self._play.setIcon(icon("pause"))
 
     def _speed_changed(self, idx):
         self._speed = [1, 2, 4][idx]
