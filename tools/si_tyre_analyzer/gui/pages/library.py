@@ -89,6 +89,7 @@ class LibraryPage(QWidget):
         loc.addWidget(self._dir, 1)
         loc.addWidget(_tool("folder", "Choose library folder…", self._browse))
         loc.addWidget(_tool("refresh", "Refresh", self._refresh))
+        loc.addWidget(_tool("edit", "Edit run info…", self._edit_info))
         root.addLayout(loc)
         self._search = QLineEdit()
         self._search.setPlaceholderText("Search runs…")
@@ -279,6 +280,10 @@ class LibraryPage(QWidget):
             it.setData(Qt.UserRole, sid)
             self._runlist.addItem(it)
         self._apply_filter()
+
+    def focus_search(self):
+        self._search.setFocus()
+        self._search.selectAll()
 
     def _apply_filter(self):
         query = self._search.text().strip().lower()

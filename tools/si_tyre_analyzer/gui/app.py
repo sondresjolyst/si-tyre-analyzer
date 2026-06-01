@@ -6,11 +6,12 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
+    QLabel,
     QMessageBox,
     QPushButton,
     QStackedWidget,
@@ -20,13 +21,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import prefs, update
-from .icons import icon
+from . import prefs, theme, update
+from .icons import icon, tool
 from .net import Worker
 from .pages.analysis import AnalysisPage
 from .pages.library import LibraryPage
 from .pages.live import LivePage
 from .pages.viewer import ViewerPage
+from .runs import run_label
 from .theme import DARK_QSS
 
 ASSETS = Path(__file__).parent / "assets"
@@ -55,9 +57,17 @@ class MainWindow(QWidget):
         hb = QHBoxLayout(header)
         hb.setContentsMargins(16, 10, 16, 10)
         logo = QSvgWidget(str(ASSETS / "si_tyre_logo.svg"))
-        logo.setFixedSize(172, 46)
+        logo.setFixedSize(110, 46)
         hb.addWidget(logo)
+        self._run_label = QLabel("")
+        self._run_label.setStyleSheet(f"color:{theme.MUTED}; font-size:14px;")
+        hb.addWidget(self._run_label)
         hb.addStretch(1)
+        ver = QLabel(f"v{update.current_version()}")
+        ver.setStyleSheet(f"color:{theme.MUTED_2};")
+        hb.addWidget(ver)
+        about = tool("info", "About SI Tyre Analyzer", self._about)
+        hb.addWidget(about)
         self._update_btn = QPushButton("Check for updates")
         self._update_btn.setObjectName("ghost")
         self._update_btn.clicked.connect(lambda: self._check_updates(manual=True))
@@ -105,7 +115,40 @@ class MainWindow(QWidget):
         self._nav.setCurrentItem(self._nav.topLevelItem(0))
         self._library.openRun.connect(self._open_run)
 
+        self._add_shortcuts()
         QTimer.singleShot(1500, lambda: self._check_updates(manual=False))
+
+    def _add_shortcuts(self):
+        for n in (1, 2, 3):
+            QShortcut(
+                QKeySequence(f"Ctrl+{n}"),
+                self,
+                activated=lambda i=n - 1: self._nav.setCurrentItem(
+                    self._nav.topLevelItem(i)
+                ),
+            )
+        QShortcut(QKeySequence("Ctrl+4"), self, activated=self._open_analysis)
+        QShortcut(QKeySequence("Ctrl+F"), self, activated=self._focus_search)
+        QShortcut(QKeySequence("F5"), self, activated=self._library._refresh)
+        QShortcut(QKeySequence("Ctrl+O"), self, activated=self._library._browse)
+
+    def _open_analysis(self):
+        analysis_item = self._nav.topLevelItem(3)
+        analysis_item.setExpanded(True)
+        self._nav.setCurrentItem(analysis_item.child(0))
+
+    def _focus_search(self):
+        self._nav.setCurrentItem(self._nav.topLevelItem(0))
+        self._library.focus_search()
+
+    def _about(self):
+        QMessageBox.about(
+            self,
+            "About SI Tyre Analyzer",
+            f"<b>SI Tyre Analyzer</b><br>Version {update.current_version()}<br><br>"
+            f'<a href="https://github.com/{update.REPO}">'
+            f"github.com/{update.REPO}</a>",
+        )
 
     @staticmethod
     def _nav_item(label, ic, page, section=None):
@@ -133,6 +176,11 @@ class MainWindow(QWidget):
         self._viewer.load_run(run)
         self._analysis.load_run(run)
         self._nav.setCurrentItem(self._viewer_item)
+        label = run_label(run)
+        self._run_label.setText(label)
+        self.setWindowTitle(
+            f"SI Tyre Analyzer — {label}" if label else "SI Tyre Analyzer"
+        )
 
     def _check_updates(self, manual: bool):
         self._update_btn.setEnabled(False)
