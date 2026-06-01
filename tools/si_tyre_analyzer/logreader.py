@@ -37,7 +37,8 @@ class SessionData:
     fw_version: str
     car_name: str
     t_offsets_ms: np.ndarray  # shape (N,)
-    grids: np.ndarray         # shape (N, rows, cols), deg C
+    grids: np.ndarray  # shape (N, rows, cols), deg C
+    path: str = ""
 
     @property
     def duration_s(self) -> float:
@@ -51,9 +52,23 @@ def read_session(path: str) -> SessionData:
     if len(data) < HEADER_SIZE:
         raise ValueError("file too small for header")
 
-    (magic, version, cols, rows, rate, wheel, scale, session_id, epoch_ms,
-     mac, group_id, fw, record_count, car_b, _reserved) = struct.unpack(
-        _HEADER_FMT, data[:HEADER_SIZE])
+    (
+        magic,
+        version,
+        cols,
+        rows,
+        rate,
+        wheel,
+        scale,
+        session_id,
+        epoch_ms,
+        mac,
+        group_id,
+        fw,
+        record_count,
+        car_b,
+        _reserved,
+    ) = struct.unpack(_HEADER_FMT, data[:HEADER_SIZE])
 
     if magic != LOG_MAGIC:
         raise ValueError(f"bad magic 0x{magic:08X}")
@@ -73,7 +88,7 @@ def read_session(path: str) -> SessionData:
     grids = np.empty((n, rows, cols), dtype=np.float32)
 
     for i in range(n):
-        rec = body[i * stride:(i + 1) * stride]
+        rec = body[i * stride : (i + 1) * stride]
         t_offsets[i] = struct.unpack_from("<I", rec, 0)[0]
         temps = np.frombuffer(rec, dtype="<i2", count=cells, offset=4)
         grids[i] = temps.reshape(rows, cols).astype(np.float32) / scale
@@ -82,7 +97,18 @@ def read_session(path: str) -> SessionData:
     mac_str = ":".join(f"{b:02X}" for b in mac)
 
     return SessionData(
-        cols=cols, rows=rows, sample_rate_hz=rate, wheel=_WHEELS.get(wheel, "NA"),
-        temp_scale=scale, session_id=session_id, epoch_ms=epoch_ms, mac=mac_str,
-        group_id=group_id, fw_version=fw_str, car_name=car,
-        t_offsets_ms=t_offsets, grids=grids)
+        cols=cols,
+        rows=rows,
+        sample_rate_hz=rate,
+        wheel=_WHEELS.get(wheel, "NA"),
+        temp_scale=scale,
+        session_id=session_id,
+        epoch_ms=epoch_ms,
+        mac=mac_str,
+        group_id=group_id,
+        fw_version=fw_str,
+        car_name=car,
+        t_offsets_ms=t_offsets,
+        grids=grids,
+        path=path,
+    )

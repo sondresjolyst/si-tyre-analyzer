@@ -44,6 +44,12 @@ def save(folder: str, session_id: int, data: dict) -> None:
         json.dump(clean, f, indent=2)
 
 
+def delete(folder: str, session_id: int) -> None:
+    path = _path(folder, session_id)
+    if os.path.exists(path):
+        os.remove(path)
+
+
 def summary(data: dict) -> str:
     """One-line summary for the library list, '' if empty."""
     bits = [data[k] for k in ("track", "driver", "compound") if data.get(k)]
