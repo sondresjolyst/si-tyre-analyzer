@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 from PySide6.QtWidgets import (
+    QCheckBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -34,6 +35,10 @@ class LivePage(QWidget):
         top_bar.addWidget(self._host)
         self._btn = tool("connect", "Connect", self._toggle)
         top_bar.addWidget(self._btn)
+        self._align = QCheckBox("Alignment guides")
+        self._align.setToolTip("Show inner/mid/outer guides for mounting")
+        self._align.toggled.connect(self._set_align)
+        top_bar.addWidget(self._align)
         self._status = QLabel("Not connected")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
         top_bar.addWidget(self._status, 1)
@@ -46,6 +51,10 @@ class LivePage(QWidget):
             self._tyres[w] = tv
             grid.addWidget(tv, i // 2, i % 2)
         root.addLayout(grid, 1)
+
+    def _set_align(self, on: bool):
+        for tv in self._tyres.values():
+            tv.setAlign(on)
 
     def _toggle(self):
         if self._poller:

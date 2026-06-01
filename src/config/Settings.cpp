@@ -22,6 +22,8 @@ bool loadConfig(DeviceConfig *out) {
     out->wheel = p.getUChar("wheel", out->wheel);
     out->has_sensor = p.getUChar("has_sensor", out->has_sensor);
     out->has_display = p.getUChar("has_display", out->has_display);
+    out->flip_x = p.getUChar("flip_x", out->flip_x);
+    out->flip_y = p.getUChar("flip_y", out->flip_y);
     out->channel = p.getUChar("channel", out->channel);
     out->group_id = p.getUInt("group", out->group_id);
     String car = p.getString("car", out->car_name);
@@ -49,6 +51,8 @@ void saveConfig(const DeviceConfig &cfg) {
   p.putUChar("wheel", cfg.wheel);
   p.putUChar("has_sensor", cfg.has_sensor);
   p.putUChar("has_display", cfg.has_display);
+  p.putUChar("flip_x", cfg.flip_x);
+  p.putUChar("flip_y", cfg.flip_y);
   p.putUChar("channel", cfg.channel);
   p.putUInt("group", cfg.group_id);
   p.putString("car", cfg.car_name);
