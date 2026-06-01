@@ -28,6 +28,7 @@ from ...constants import WHEELS
 from ...lapdata import parse_laps
 from .. import meta, prefs, theme
 from ..colors import tyre_cmap
+from ..icons import tool
 from ..runs import DEFAULT_DIR, run_label
 from ..widgets import RunSelector
 
@@ -104,9 +105,7 @@ class AnalysisPage(QWidget):
         for sb in (self._lo, self._hi):
             sb.valueChanged.connect(self._window_changed)
             top_bar.addWidget(sb)
-        b_laps = QPushButton("Load lap CSV…")
-        b_laps.clicked.connect(self._load_laps)
-        top_bar.addWidget(b_laps)
+        top_bar.addWidget(tool("flag", "Load lap CSV…", self._load_laps))
         top_bar.addWidget(QLabel("Lap offset s:"))
         self._off = QDoubleSpinBox()
         self._off.setRange(-3600, 3600)
@@ -116,9 +115,7 @@ class AnalysisPage(QWidget):
         self._lapinfo = QLabel("no laps")
         self._lapinfo.setStyleSheet(f"color:{theme.MUTED};")
         top_bar.addWidget(self._lapinfo)
-        b_export = QPushButton("Export report…")
-        b_export.clicked.connect(self._export)
-        top_bar.addWidget(b_export)
+        top_bar.addWidget(tool("export", "Export report…", self._export))
         root.addLayout(top_bar)
 
         self._tabs = QTabWidget()

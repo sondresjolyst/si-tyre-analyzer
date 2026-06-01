@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
 from ...constants import DEFAULT_HOST, WHEELS
 from .. import theme
 from ..heatmap_widget import TyreView
+from ..icons import tool
 from ..net import LivePoller
 
 
@@ -32,8 +32,7 @@ class LivePage(QWidget):
         self._host = QLineEdit(DEFAULT_HOST)
         self._host.setMaximumWidth(180)
         top_bar.addWidget(self._host)
-        self._btn = QPushButton("Connect")
-        self._btn.clicked.connect(self._toggle)
+        self._btn = tool("connect", "Connect", self._toggle)
         top_bar.addWidget(self._btn)
         self._status = QLabel("Not connected")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
@@ -56,7 +55,7 @@ class LivePage(QWidget):
             self._poller.data.connect(self._on_data)
             self._poller.error.connect(self._on_error)
             self._poller.start()
-            self._btn.setText("Disconnect")
+            self._btn.setToolTip("Disconnect")
             self._status.setText("Connecting…")
 
     def _stop(self):
@@ -64,7 +63,7 @@ class LivePage(QWidget):
             self._poller.stop()
             self._poller.wait(2000)
             self._poller = None
-        self._btn.setText("Connect")
+        self._btn.setToolTip("Connect")
         self._status.setText("Not connected")
 
     def _on_data(self, d: dict):

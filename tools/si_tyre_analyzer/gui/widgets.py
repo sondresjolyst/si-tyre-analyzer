@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QPushButton, QWidget
+from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QWidget
 
 from . import prefs
+from .icons import tool
 from .runs import DEFAULT_DIR, load_runs, run_label
 
 
@@ -19,9 +20,7 @@ class RunSelector(QWidget):
         self._runs = {}
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        b_open = QPushButton("Open folder…")
-        b_open.clicked.connect(self._open_folder)
-        lay.addWidget(b_open)
+        lay.addWidget(tool("folder", "Open runs folder…", self._open_folder))
         self._combo = QComboBox()
         self._combo.currentIndexChanged.connect(self._selected)
         lay.addWidget(self._combo, 1)

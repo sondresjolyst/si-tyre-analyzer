@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+_ICONS = Path(__file__).parent / "assets" / "icons"
+_CHEVRON = (_ICONS / "chevron.svg").as_posix()
+_CHEVRON_UP = (_ICONS / "chevron-up.svg").as_posix()
+
 # Surfaces / chrome
 BG_DEEP = "#0b1220"
 BG = "#111827"
@@ -36,6 +42,29 @@ QAbstractSpinBox {{
 QPushButton {{ background:{ACCENT}; color:{WHITE}; border:0; border-radius:6px;
   padding:6px 12px; font-weight:600; }}
 QPushButton:hover {{ background:{ACCENT_HOVER}; }}
+QToolButton {{ background:transparent; border:1px solid {BORDER};
+  border-radius:6px; padding:5px; }}
+QToolButton:hover {{ background:{SURFACE}; }}
+QToolButton:disabled {{ border-color:{SURFACE}; }}
+QToolButton::menu-indicator {{ width:0; height:0; }}
+QComboBox {{ padding-right:24px; }}
+QComboBox::drop-down {{ subcontrol-origin:padding; subcontrol-position:top right;
+  width:22px; border-left:1px solid {BORDER};
+  border-top-right-radius:6px; border-bottom-right-radius:6px; }}
+QComboBox::down-arrow {{ image:url("{_CHEVRON}"); width:12px; height:12px; }}
+QComboBox QAbstractItemView {{ background:{SURFACE}; border:1px solid {BORDER};
+  selection-background-color:{ACCENT}; selection-color:{WHITE}; outline:0; }}
+QAbstractSpinBox {{ padding-right:22px; }}
+QAbstractSpinBox::up-button {{ subcontrol-origin:padding;
+  subcontrol-position:top right; width:20px; border-left:1px solid {BORDER};
+  border-top-right-radius:6px; }}
+QAbstractSpinBox::down-button {{ subcontrol-origin:padding;
+  subcontrol-position:bottom right; width:20px; border-left:1px solid {BORDER};
+  border-bottom-right-radius:6px; }}
+QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {{
+  background:{SURFACE}; }}
+QAbstractSpinBox::up-arrow {{ image:url("{_CHEVRON_UP}"); width:11px; height:11px; }}
+QAbstractSpinBox::down-arrow {{ image:url("{_CHEVRON}"); width:11px; height:11px; }}
 QListWidget#nav {{ background:{BG_DEEP}; border:0; font-size:14px; }}
 QListWidget#nav::item {{ padding:12px 16px; }}
 QListWidget#nav::item:selected {{ background:{SURFACE}; color:{WHITE}; }}
