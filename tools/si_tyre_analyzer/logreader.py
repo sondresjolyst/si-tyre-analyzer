@@ -25,6 +25,8 @@ _WHEELS = {0: "FL", 1: "FR", 2: "RL", 3: "RR", 255: "NA"}
 
 @dataclass
 class SessionData:
+    """One wheel's recorded session: header fields plus the grid time series."""
+
     cols: int
     rows: int
     sample_rate_hz: int
