@@ -19,8 +19,8 @@ jobs:
       issues: write
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
-      fw_release_created: ${{ steps.release.outputs['.--release_created'] }}
-      fw_tag_name: ${{ steps.release.outputs['.--tag_name'] }}
+      fw_release_created: ${{ steps.release.outputs.release_created }}
+      fw_tag_name: ${{ steps.release.outputs.tag_name }}
       app_release_created: ${{ steps.release.outputs['tools--release_created'] }}
       app_tag_name: ${{ steps.release.outputs['tools--tag_name'] }}
     steps:
