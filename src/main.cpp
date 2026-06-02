@@ -411,6 +411,14 @@ static void handleCommand(String cmd) {
     gConfig.has_display = cmd.substring(8).toInt() ? 1 : 0;
     tyre::saveConfig(gConfig);
     Serial.println("OK display (reboot to apply)");
+  } else if (cmd.startsWith("flip ")) {
+    const String a = cmd.substring(5);
+    const int sp = a.indexOf(' ');
+    gConfig.flip_x = a.substring(0, sp).toInt() ? 1 : 0;
+    gConfig.flip_y = (sp >= 0 ? a.substring(sp + 1).toInt() : 0) ? 1 : 0;
+    tyre::saveConfig(gConfig);
+    recorder.setFlip(gConfig.flip_x, gConfig.flip_y);
+    Serial.printf("OK flip x=%u y=%u\n", gConfig.flip_x, gConfig.flip_y);
   } else if (cmd.startsWith("car ")) {
     gConfig.group_id =
         static_cast<uint32_t>(strtoul(cmd.substring(4).c_str(), nullptr, 0));
@@ -504,6 +512,7 @@ void setup() {
   gEsp.onLive(onEspLive);
   gEsp.onFwPush(onEspFwPush);
 
+  recorder.setFlip(gConfig.flip_x, gConfig.flip_y);
   if (gConfig.has_sensor && !recorder.beginSensor()) {
     printHelper.log("ERROR", "sensor begin failed");
   }
@@ -568,12 +577,16 @@ void loop() {
 
   if (appState == STATE_RECORDING) {
     recorder.tick();
-    // Wheel units stream a throttled live grid to the master (~2 Hz).
-    if (gConfig.has_sensor && gConfig.has_master &&
-        millis() - lastLiveMs >= 500) {
+    // Stream a throttled live grid (~2 Hz). A wheel sends it to the master; a
+    // sensor-equipped master (no master of its own) feeds the dashboard direct.
+    if (gConfig.has_sensor && millis() - lastLiveMs >= 500) {
       lastLiveMs = millis();
-      gEsp.sendLiveGrid(gSessionId, recorder.lastSampleOffsetMs(),
-                        recorder.lastScaledGrid());
+      if (gConfig.has_master)
+        gEsp.sendLiveGrid(gSessionId, recorder.lastSampleOffsetMs(),
+                          recorder.lastScaledGrid());
+      else
+        gDashboard.update(gConfig.wheel, recorder.lastSampleOffsetMs(),
+                          recorder.lastScaledGrid());
     }
     if (gConfig.has_sensor && !recorder.isRecording())
       appState = STATE_IDLE;

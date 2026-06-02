@@ -19,6 +19,11 @@ namespace tyre {
 void downsample(const float *in, int inW, int inH, float *out, int outCols,
                 int outRows);
 
+// Mirror a grid in place to correct the sensor's mounting orientation.
+// flipX reverses column order (swaps the across-tread inner/outer sides);
+// flipY reverses row order. Operates on `grid` (cols x rows, row-major).
+void applyFlip(float *grid, int cols, int rows, bool flipX, bool flipY);
+
 // Storage scaling: deg C <-> int16 hundredths.
 constexpr int kTempScale = 100;
 

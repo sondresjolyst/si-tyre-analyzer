@@ -35,4 +35,28 @@ void downsample(const float *in, int inW, int inH, float *out, int outCols,
   }
 }
 
+void applyFlip(float *grid, int cols, int rows, bool flipX, bool flipY) {
+  if (flipX) {
+    for (int r = 0; r < rows; r++) {
+      float *row = grid + r * cols;
+      for (int c = 0; c < cols / 2; c++) {
+        const float tmp = row[c];
+        row[c] = row[cols - 1 - c];
+        row[cols - 1 - c] = tmp;
+      }
+    }
+  }
+  if (flipY) {
+    for (int r = 0; r < rows / 2; r++) {
+      float *a = grid + r * cols;
+      float *b = grid + (rows - 1 - r) * cols;
+      for (int c = 0; c < cols; c++) {
+        const float tmp = a[c];
+        a[c] = b[c];
+        b[c] = tmp;
+      }
+    }
+  }
+}
+
 }  // namespace tyre

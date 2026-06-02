@@ -21,6 +21,12 @@ class RecordingController {
 
   bool beginSensor() { return sensor_->begin(); }
 
+  // Mirror the grid to match how the sensor is mounted (see Downsample).
+  void setFlip(bool flipX, bool flipY) {
+    flipX_ = flipX;
+    flipY_ = flipY;
+  }
+
   // Start a session. wheel/mac/fwVer/groupId go into the file header.
   bool start(uint32_t sessionId, uint64_t startEpochMs, uint8_t wheel,
              const uint8_t mac[6], const char *fwVer, uint32_t groupId,
@@ -45,6 +51,9 @@ class RecordingController {
   uint32_t lastSampleMs_ = 0;
   uint32_t lastFlushMs_ = 0;
   uint32_t lastOffsetMs_ = 0;
+
+  bool flipX_ = false;
+  bool flipY_ = false;
 
   float frame_[MLX_PIXELS];
   float grid_[kGridCells];

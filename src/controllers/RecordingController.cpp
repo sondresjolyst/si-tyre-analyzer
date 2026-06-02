@@ -29,11 +29,13 @@ bool RecordingController::start(uint32_t sessionId, uint64_t startEpochMs,
 }
 
 void RecordingController::stop() {
-  if (logger_->isRecording()) logger_->endSession();
+  if (logger_->isRecording())
+    logger_->endSession();
 }
 
 void RecordingController::tick() {
-  if (!logger_->isRecording()) return;
+  if (!logger_->isRecording())
+    return;
 
   const uint32_t now = millis();
   const uint32_t elapsed = now - sessionStartMs_;
@@ -50,7 +52,9 @@ void RecordingController::tick() {
     lastSampleMs_ = now;
     if (sensor_->readFrame(frame_)) {
       downsample(frame_, MLX_W, MLX_H, grid_, kGridCols, kGridRows);
-      for (int i = 0; i < kGridCells; i++) scaled_[i] = scaleTemp(grid_[i]);
+      applyFlip(grid_, kGridCols, kGridRows, flipX_, flipY_);
+      for (int i = 0; i < kGridCells; i++)
+        scaled_[i] = scaleTemp(grid_[i]);
       lastOffsetMs_ = elapsed;
       logger_->appendSample(elapsed, scaled_);
     }

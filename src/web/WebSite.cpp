@@ -119,6 +119,17 @@ String pageRoot(const DeviceConfig &cfg) {
   h += opt("RR", "Rear right", cfg.wheel == WHEEL_RR);
   h += "</select></div>";
 
+  h += "<div id='flipRow'>"
+       "<label>Mirror inner/outer (across tread)</label>"
+       "<select name='flip_x'>";
+  h += opt("0", "No", cfg.flip_x == 0);
+  h += opt("1", "Yes", cfg.flip_x == 1);
+  h += "</select>"
+       "<label>Mirror direction of travel</label><select name='flip_y'>";
+  h += opt("0", "No", cfg.flip_y == 0);
+  h += opt("1", "Yes", cfg.flip_y == 1);
+  h += "</select></div>";
+
   h += "<label>ESP-NOW / AP channel</label><select name='channel'>";
   for (int ch : {1, 6, 11}) {
     char v[4];
@@ -203,9 +214,10 @@ String pageRoot(const DeviceConfig &cfg) {
   }
   h += "</form></div>";
 
-  h += "<script>function syncWheel(){document.getElementById('wheelRow')"
-       ".style.display=document.getElementById('has_sensor').value==='1'"
-       "?'':'none';}syncWheel();"
+  h += "<script>function syncWheel(){var s="
+       "document.getElementById('has_sensor').value==='1'?'':'none';"
+       "document.getElementById('wheelRow').style.display=s;"
+       "document.getElementById('flipRow').style.display=s;}syncWheel();"
        "function syncRole(){document.getElementById('displayRow')"
        ".style.display=document.getElementById('role').value==='master'"
        "?'':'none';}syncRole();"

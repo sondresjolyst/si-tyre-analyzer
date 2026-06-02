@@ -15,11 +15,16 @@ class _HeatCanvas(QWidget):
     def __init__(self):
         super().__init__()
         self._grid: np.ndarray | None = None  # (rows, cols) deg C
+        self._align = False
         self.setMinimumSize(120, 160)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def setGrid(self, grid):
         self._grid = grid
+        self.update()
+
+    def setAlign(self, on: bool):
+        self._align = on
         self.update()
 
     def paintEvent(self, _ev):
@@ -54,6 +59,30 @@ class _HeatCanvas(QWidget):
                         Qt.AlignCenter,
                         str(round(float(g[r, c]))),
                     )
+        if self._align:
+            self._draw_guides(p, cols, w, h)
+
+    def _draw_guides(self, p, cols, w, h):
+        # Columns run across the tyre tread (inner -> outer); the centre row
+        # line marks the around-the-tyre middle.
+        p.setPen(QColor(255, 255, 255, 150))
+        p.drawLine(0, h // 2, w, h // 2)
+        for c in (cols // 3, 2 * cols // 3):
+            x = c * w // cols
+            p.drawLine(x, 0, x, h)
+        f = QFont()
+        f.setPixelSize(10)
+        f.setBold(True)
+        p.setFont(f)
+        bands = [
+            (0, cols // 3, "INNER"),
+            (cols // 3, 2 * cols // 3, "MID"),
+            (2 * cols // 3, cols, "OUTER"),
+        ]
+        for a, b, txt in bands:
+            x0 = a * w // cols
+            x1 = b * w // cols
+            p.drawText(x0, 2, x1 - x0, 16, Qt.AlignHCenter | Qt.AlignTop, txt)
 
 
 class TyreView(QWidget):
@@ -78,6 +107,9 @@ class TyreView(QWidget):
     def setTitle(self, t: str):
         self._title.setText(t)
 
+    def setAlign(self, on: bool):
+        self._canvas.setAlign(on)
+
     def setGrid(self, grid):
         if grid is None:
             self._canvas.setGrid(None)
@@ -85,7 +117,9 @@ class TyreView(QWidget):
             return
         self._canvas.setGrid(grid)
         self._stats.setText(
-            f"min {float(np.nanmin(grid)):.1f}°  ·  max {float(np.nanmax(grid)):.1f}°"
+            f"min {float(np.nanmin(grid)):.1f}°  ·  "
+            f"avg {float(np.nanmean(grid)):.1f}°  ·  "
+            f"max {float(np.nanmax(grid)):.1f}°"
         )
 
     def clear(self):
