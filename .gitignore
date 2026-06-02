@@ -12,3 +12,4 @@ __pycache__
 *.egg-info
 tools/run_demo
 src/web/Logo.h
+tools/dist
