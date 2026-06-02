@@ -76,6 +76,10 @@ def read_session(path: str) -> SessionData:
         raise ValueError(f"bad magic 0x{magic:08X}")
     if version != LOG_VERSION:
         raise ValueError(f"unsupported version {version}")
+    if scale == 0:
+        raise ValueError("bad temperature scale (0)")
+    if not 1 <= cols <= 64 or not 1 <= rows <= 64:
+        raise ValueError(f"implausible grid size {cols}x{rows}")
 
     car = car_b.split(b"\x00", 1)[0].decode("utf-8", "replace")
     cells = cols * rows

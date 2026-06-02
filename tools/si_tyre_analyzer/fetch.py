@@ -7,6 +7,7 @@ import os
 
 def list_sessions(host: str) -> list[dict]:
     import requests
+
     r = requests.get(f"http://{host}/api/sessions", timeout=10)
     r.raise_for_status()
     return r.json()
@@ -14,6 +15,7 @@ def list_sessions(host: str) -> list[dict]:
 
 def download(host: str, name: str, dest_dir: str = ".") -> str:
     import requests
+
     os.makedirs(dest_dir, exist_ok=True)
     url = f"http://{host}/download?file={name}"
     dest = os.path.join(dest_dir, name)
@@ -25,5 +27,11 @@ def download(host: str, name: str, dest_dir: str = ".") -> str:
     return dest
 
 
-def download_all(host: str, dest_dir: str = ".") -> list[str]:
-    return [download(host, s["name"], dest_dir) for s in list_sessions(host)]
+def download_all(host: str, dest_dir: str = ".", progress=None) -> list[str]:
+    sessions = list_sessions(host)
+    out = []
+    for i, s in enumerate(sessions, 1):
+        if progress:
+            progress(f"Downloading {i}/{len(sessions)}: {s['name']}")
+        out.append(download(host, s["name"], dest_dir))
+    return out

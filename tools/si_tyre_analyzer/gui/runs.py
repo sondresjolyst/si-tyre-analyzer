@@ -20,16 +20,25 @@ def _default_dir() -> str:
 DEFAULT_DIR = _default_dir()
 
 
-def load_runs(folder: str) -> dict[int, dict[str, SessionData]]:
-    """Return {session_id: {wheel: SessionData}} for every .bin in folder."""
+def scan_runs(
+    folder: str,
+) -> tuple[dict[int, dict[str, SessionData]], list[tuple[str, str]]]:
+    """Like load_runs, but also return [(filename, reason)] for files skipped."""
     runs: dict[int, dict[str, SessionData]] = {}
+    skipped: list[tuple[str, str]] = []
     for path in sorted(glob.glob(os.path.join(folder, "*.bin"))):
         try:
             s = read_session(path)
-        except Exception:
+        except Exception as e:  # noqa: BLE001  (any malformed file -> skip + report)
+            skipped.append((os.path.basename(path), str(e)))
             continue
         runs.setdefault(s.session_id, {})[s.wheel] = s
-    return runs
+    return runs, skipped
+
+
+def load_runs(folder: str) -> dict[int, dict[str, SessionData]]:
+    """Return {session_id: {wheel: SessionData}} for every .bin in folder."""
+    return scan_runs(folder)[0]
 
 
 def run_label(run: dict) -> str:

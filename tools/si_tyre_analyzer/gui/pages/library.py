@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMenu,
     QMessageBox,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -28,7 +29,7 @@ from .. import firmware, meta, net, prefs, theme
 from ...fetch import download, download_all, list_sessions
 from ..icons import tool as _tool
 from ..metadialog import MetaDialog
-from ..runs import DEFAULT_DIR, load_runs, run_label
+from ..runs import DEFAULT_DIR, run_label, scan_runs
 from ..widgets import HintListWidget
 
 
@@ -104,10 +105,19 @@ class LibraryPage(QWidget):
         self._runlist.customContextMenuRequested.connect(self._run_menu)
         root.addWidget(self._runlist, 1)
 
+        status_row = QHBoxLayout()
         self._status = QLabel("")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
-        root.addWidget(self._status)
+        self._status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        status_row.addWidget(self._status, 1)
+        self._undo_btn = QToolButton()
+        self._undo_btn.setText("Undo delete")
+        self._undo_btn.clicked.connect(self._undo_delete)
+        self._undo_btn.hide()
+        status_row.addWidget(self._undo_btn)
+        root.addLayout(status_row)
 
+        self._undo = None
         self._runs = {}
         self._refresh()
 
@@ -118,6 +128,7 @@ class LibraryPage(QWidget):
         color = self._STATUS_COLORS.get(level, theme.MUTED)
         self._status.setStyleSheet(f"color:{color};")
         self._status.setText(text)
+        self._status.setToolTip(text)
 
     # ---- device ----
     def _run_worker(self, fn, on_done):
@@ -127,6 +138,7 @@ class LibraryPage(QWidget):
         self._worker.done.connect(self._worker_done)
         self._worker.done.connect(on_done)
         self._worker.failed.connect(self._worker_failed)
+        self._worker.progress.connect(self._set_status)
         self._worker.start()
 
     def _worker_done(self, *_):
@@ -253,7 +265,10 @@ class LibraryPage(QWidget):
         host = self._host.text().strip()
         dest = self._dir.text().strip()
         os.makedirs(dest, exist_ok=True)
-        self._run_worker(lambda: download_all(host, dest), self._after_download)
+        self._run_worker(
+            lambda progress: download_all(host, dest, progress=progress),
+            self._after_download,
+        )
 
     def _after_download(self, paths):
         self._set_status(f"Downloaded {len(paths)} file(s)", "ok")
@@ -264,12 +279,14 @@ class LibraryPage(QWidget):
         d = QFileDialog.getExistingDirectory(self, "Library folder", self._dir.text())
         if d:
             self._dir.setText(d)
+            self._undo = None
+            self._undo_btn.hide()
             self._refresh()
 
     def _refresh(self):
         prefs.set_last_dir(self._dir.text().strip())
         folder = self._dir.text().strip()
-        self._runs = load_runs(folder)
+        self._runs, skipped = scan_runs(folder)
         self._runlist.clear()
         for sid in sorted(self._runs):
             label = run_label(self._runs[sid])
@@ -280,6 +297,16 @@ class LibraryPage(QWidget):
             it.setData(Qt.UserRole, sid)
             self._runlist.addItem(it)
         self._apply_filter()
+        if skipped:
+            self._set_status(
+                f"{len(self._runs)} run(s) · {len(skipped)} file(s) skipped", "error"
+            )
+            self._status.setToolTip(
+                "Skipped (unreadable):\n"
+                + "\n".join(f"{n}: {why}" for n, why in skipped)
+            )
+        else:
+            self._status.setToolTip("")
 
     def focus_search(self):
         self._search.setFocus()
@@ -336,6 +363,11 @@ class LibraryPage(QWidget):
         target = paths[0] if paths else self._dir.text().strip()
         _reveal_in_file_manager(target)
 
+    def _trash_dir(self, folder: str) -> str:
+        d = os.path.join(folder, ".trash")
+        os.makedirs(d, exist_ok=True)
+        return d
+
     def _delete_run(self):
         it = self._runlist.currentItem()
         if not it:
@@ -346,18 +378,49 @@ class LibraryPage(QWidget):
             QMessageBox.question(
                 self,
                 "Delete run",
-                f"Delete {len(paths)} file(s) for this run? This cannot be undone.",
+                f"Move {len(paths)} file(s) for this run to the trash?",
             )
             != QMessageBox.Yes
         ):
             return
+        folder = self._dir.text().strip()
+        trash = self._trash_dir(folder)
+        moved = []
         for p in paths:
+            dst = os.path.join(trash, os.path.basename(p))
             try:
-                os.remove(p)
+                if os.path.exists(dst):
+                    os.remove(dst)
+                shutil.move(p, dst)
+                moved.append((dst, p))
             except OSError:
                 pass
-        meta.delete(self._dir.text().strip(), sid)
+        self._undo = {
+            "sid": sid,
+            "moved": moved,
+            "meta": meta.load(folder, sid),
+            "folder": folder,
+        }
+        meta.delete(folder, sid)
+        self._undo_btn.show()
         self._refresh()
+        self._set_status(f"Deleted run ({len(moved)} file(s))", "ok")
+
+    def _undo_delete(self):
+        if not self._undo:
+            return
+        undo = self._undo
+        for dst, orig in undo["moved"]:
+            try:
+                shutil.move(dst, orig)
+            except OSError:
+                pass
+        if undo["meta"]:
+            meta.save(undo["folder"], undo["sid"], undo["meta"])
+        self._undo = None
+        self._undo_btn.hide()
+        self._refresh()
+        self._set_status("Restored run", "ok")
 
     def import_files(self, paths):
         """Copy dropped .bin files into the library folder."""

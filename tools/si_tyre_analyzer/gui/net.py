@@ -23,6 +23,7 @@ class LivePoller(QThread):
 
     def run(self):
         import requests
+
         while self._run:
             try:
                 r = requests.get(f"http://{self._host}/api/live", timeout=2)
@@ -37,17 +38,28 @@ class LivePoller(QThread):
 
 
 class Worker(QThread):
-    """Runs a callable off the UI thread; emits done(result) or failed(msg)."""
+    """Runs a callable off the UI thread; emits done(result) or failed(msg).
+
+    If the callable accepts a ``progress`` parameter it is handed a callback
+    that emits the progress(str) signal, for live status during long jobs.
+    """
 
     done = Signal(object)
     failed = Signal(str)
+    progress = Signal(str)
 
     def __init__(self, fn):
         super().__init__()
         self._fn = fn
 
     def run(self):
+        import inspect
+
         try:
-            self.done.emit(self._fn())
+            if "progress" in inspect.signature(self._fn).parameters:
+                result = self._fn(progress=self.progress.emit)
+            else:
+                result = self._fn()
+            self.done.emit(result)
         except Exception as e:
             self.failed.emit(str(e))
