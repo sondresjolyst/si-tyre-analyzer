@@ -577,12 +577,16 @@ void loop() {
 
   if (appState == STATE_RECORDING) {
     recorder.tick();
-    // Wheel units stream a throttled live grid to the master (~2 Hz).
-    if (gConfig.has_sensor && gConfig.has_master &&
-        millis() - lastLiveMs >= 500) {
+    // Stream a throttled live grid (~2 Hz). A wheel sends it to the master; a
+    // sensor-equipped master (no master of its own) feeds the dashboard direct.
+    if (gConfig.has_sensor && millis() - lastLiveMs >= 500) {
       lastLiveMs = millis();
-      gEsp.sendLiveGrid(gSessionId, recorder.lastSampleOffsetMs(),
-                        recorder.lastScaledGrid());
+      if (gConfig.has_master)
+        gEsp.sendLiveGrid(gSessionId, recorder.lastSampleOffsetMs(),
+                          recorder.lastScaledGrid());
+      else
+        gDashboard.update(gConfig.wheel, recorder.lastSampleOffsetMs(),
+                          recorder.lastScaledGrid());
     }
     if (gConfig.has_sensor && !recorder.isRecording())
       appState = STATE_IDLE;
