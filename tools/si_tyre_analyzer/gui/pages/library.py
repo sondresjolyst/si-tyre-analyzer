@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMenu,
     QMessageBox,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -107,6 +108,7 @@ class LibraryPage(QWidget):
         status_row = QHBoxLayout()
         self._status = QLabel("")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
+        self._status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         status_row.addWidget(self._status, 1)
         self._undo_btn = QToolButton()
         self._undo_btn.setText("Undo delete")
@@ -126,6 +128,7 @@ class LibraryPage(QWidget):
         color = self._STATUS_COLORS.get(level, theme.MUTED)
         self._status.setStyleSheet(f"color:{color};")
         self._status.setText(text)
+        self._status.setToolTip(text)
 
     # ---- device ----
     def _run_worker(self, fn, on_done):

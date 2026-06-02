@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -41,6 +42,7 @@ class LivePage(QWidget):
         top_bar.addWidget(self._align)
         self._status = QLabel("Not connected")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
+        self._status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         top_bar.addWidget(self._status, 1)
         root.addLayout(top_bar)
 
