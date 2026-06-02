@@ -9,11 +9,8 @@ import os
 import struct
 import sys
 
-import numpy as np
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from si_tyre_analyzer.logreader import (HEADER_SIZE, LOG_MAGIC, LOG_VERSION,
-                                        read_session)
+from si_tyre_analyzer.logreader import HEADER_SIZE, LOG_MAGIC, LOG_VERSION, read_session
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "sample_session.bin")
 
@@ -32,9 +29,22 @@ def build_fixture(path, finalised=True):
     cells = COLS * ROWS
     header = struct.pack(
         "<IHBBHBBIQ6sI16sI24s18s",
-        LOG_MAGIC, LOG_VERSION, COLS, ROWS, RATE, WHEEL, SCALE,
-        SESSION_ID, 0, b"\x01\x02\x03\x04\x05\x06", GROUP_ID,
-        b"v0.1.0", N if finalised else 0, CAR_NAME.encode(), b"\x00" * 18)
+        LOG_MAGIC,
+        LOG_VERSION,
+        COLS,
+        ROWS,
+        RATE,
+        WHEEL,
+        SCALE,
+        SESSION_ID,
+        0,
+        b"\x01\x02\x03\x04\x05\x06",
+        GROUP_ID,
+        b"v0.1.0",
+        N if finalised else 0,
+        CAR_NAME.encode(),
+        b"\x00" * 18,
+    )
     assert len(header) == HEADER_SIZE
 
     body = bytearray()
@@ -72,7 +82,70 @@ def test_count_recovery_from_filesize():
     assert len(s.t_offsets_ms) == N
 
 
+def _header(**over):
+    f = {
+        "magic": LOG_MAGIC,
+        "version": LOG_VERSION,
+        "cols": COLS,
+        "rows": ROWS,
+        "rate": RATE,
+        "wheel": WHEEL,
+        "scale": SCALE,
+        "sid": SESSION_ID,
+        "epoch": 0,
+        "mac": b"\x01\x02\x03\x04\x05\x06",
+        "group": GROUP_ID,
+        "fw": b"v0.1.0",
+        "count": 0,
+        "car": CAR_NAME.encode(),
+        "reserved": b"\x00" * 18,
+    }
+    f.update(over)
+    return struct.pack(
+        "<IHBBHBBIQ6sI16sI24s18s",
+        f["magic"],
+        f["version"],
+        f["cols"],
+        f["rows"],
+        f["rate"],
+        f["wheel"],
+        f["scale"],
+        f["sid"],
+        f["epoch"],
+        f["mac"],
+        f["group"],
+        f["fw"],
+        f["count"],
+        f["car"],
+        f["reserved"],
+    )
+
+
+def _raises_valueerror(payload):
+    path = os.path.join(os.path.dirname(FIXTURE), "_bad.bin")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(payload)
+    try:
+        read_session(path)
+        return False
+    except ValueError:
+        return True
+    finally:
+        os.remove(path)
+
+
+def test_rejects_malformed_files():
+    assert _raises_valueerror(b"\x00" * 8)  # too small for header
+    assert _raises_valueerror(_header(magic=0xDEADBEEF))  # bad magic
+    assert _raises_valueerror(_header(version=99))  # unsupported version
+    assert _raises_valueerror(_header(scale=0))  # zero temp scale
+    assert _raises_valueerror(_header(cols=0))  # zero grid dimension
+    assert _raises_valueerror(_header(cols=200))  # implausible grid size
+
+
 if __name__ == "__main__":
     test_round_trip()
     test_count_recovery_from_filesize()
+    test_rejects_malformed_files()
     print("ALL PYTHON TESTS PASSED")
