@@ -1,31 +1,32 @@
 # Mounting the tyre sensor
 
 Each wheel unit points its MLX90640 (110° wide lens) at the tyre tread. Good
-data needs the tread to fill the sensor's view, centred across the three
+data needs the tread to fill the sensor's view, spread across the three
 temperature bands (inner / middle / outer). This guide covers distance, aiming,
 and orientation.
 
 ## How far from the tyre
 
-The sensor sees a fixed cone. The tread runs across the sensor's **vertical**
-field of view (75° on the 110° lens), so the distance that makes a tread of
-width `W` just fill the view is:
+The sensor sees a fixed cone. The tread runs across the sensor's **wide**
+axis — the 110° horizontal field of view, the one split into the inner / middle
+/ outer columns. The distance that makes a tread of width `W` just fill that
+view is:
 
 ```text
-distance = W / (2 · tan(75° / 2)) ≈ 0.65 · W
+distance = W / (2 · tan(110° / 2)) ≈ 0.35 · W
 ```
 
 | Tread width | Distance |
 |------------:|---------:|
-| 155 mm      | 100 mm   |
-| 185 mm      | 120 mm   |
-| 205 mm      | 135 mm   |
-| 225 mm      | 145 mm   |
-| 245 mm      | 160 mm   |
-| 265 mm      | 175 mm   |
-| 285 mm      | 185 mm   |
-| 305 mm      | 200 mm   |
-| 325 mm      | 210 mm   |
+| 155 mm      | 55 mm    |
+| 185 mm      | 65 mm    |
+| 205 mm      | 70 mm    |
+| 225 mm      | 80 mm    |
+| 245 mm      | 85 mm    |
+| 265 mm      | 95 mm    |
+| 285 mm      | 100 mm   |
+| 305 mm      | 105 mm   |
+| 325 mm      | 115 mm   |
 
 These distances make the tread fill the frame edge to edge. Mount about 10 %
 farther so the shoulders stay in view with a little margin.
@@ -38,10 +39,10 @@ changes the covered width, so fine-tune the angle once it is roughly in place.
 1. Power up the car and the wheel units.
 2. In the app, open **Live** and connect to the master.
 3. Turn on **Alignment guides**. Each wheel shows inner / middle / outer band
-   labels and a centre crosshair.
+   labels and a centre line.
 4. Warm the tyre (a heat gun or a few laps) so there is contrast.
-5. Adjust each sensor until the warm tread band fills the frame and sits
-   centred on the middle band.
+5. Adjust each sensor until the warm tread fills the frame left to right and
+   sits centred on the middle band.
 
 ## Orientation (flip)
 
@@ -50,8 +51,8 @@ inner shoulder reading on the outer side, or the direction of travel reversed.
 Correct it per device in the web config (open the device, **Configure**):
 
 - **Mirror inner/outer** — use when the inner and outer shoulders are swapped.
-- **Mirror direction of travel** — use when left and right are reversed.
+- **Mirror direction of travel** — use when the rotation direction is reversed.
 
 The flip is applied on the device, so both the live view and the recorded
 sessions come out the right way round. Reboot the device for it to take effect.
-You can also set it over serial: `flip <x> <y>` (e.g. `flip 0 1`).
+You can also set it over serial: `flip <x> <y>` (e.g. `flip 1 0`).

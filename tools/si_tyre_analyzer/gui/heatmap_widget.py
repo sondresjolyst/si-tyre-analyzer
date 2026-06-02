@@ -60,25 +60,29 @@ class _HeatCanvas(QWidget):
                         str(round(float(g[r, c]))),
                     )
         if self._align:
-            self._draw_guides(p, rows, w, h)
+            self._draw_guides(p, cols, w, h)
 
-    def _draw_guides(self, p, rows, w, h):
-        # Rows run across the tyre tread (inner -> outer); the centre column
+    def _draw_guides(self, p, cols, w, h):
+        # Columns run across the tyre tread (inner -> outer); the centre row
         # line marks the around-the-tyre middle.
         p.setPen(QColor(255, 255, 255, 150))
-        p.drawLine(w // 2, 0, w // 2, h)
-        for r in range(1, rows):
-            y = r * h // rows
-            p.drawLine(0, y, w, y)
+        p.drawLine(0, h // 2, w, h // 2)
+        for c in (cols // 3, 2 * cols // 3):
+            x = c * w // cols
+            p.drawLine(x, 0, x, h)
         f = QFont()
         f.setPixelSize(10)
         f.setBold(True)
         p.setFont(f)
-        labels = {0: "INNER", rows // 2: "MID", rows - 1: "OUTER"}
-        for r, txt in labels.items():
-            p.drawText(
-                2, r * h // rows, w - 4, h // rows, Qt.AlignLeft | Qt.AlignVCenter, txt
-            )
+        bands = [
+            (0, cols // 3, "INNER"),
+            (cols // 3, 2 * cols // 3, "MID"),
+            (2 * cols // 3, cols, "OUTER"),
+        ]
+        for a, b, txt in bands:
+            x0 = a * w // cols
+            x1 = b * w // cols
+            p.drawText(x0, 2, x1 - x0, 16, Qt.AlignHCenter | Qt.AlignTop, txt)
 
 
 class TyreView(QWidget):

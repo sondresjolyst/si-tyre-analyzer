@@ -120,12 +120,12 @@ String pageRoot(const DeviceConfig &cfg) {
   h += "</select></div>";
 
   h += "<div id='flipRow'>"
-       "<label>Mirror direction of travel (left/right)</label>"
+       "<label>Mirror inner/outer (across tread)</label>"
        "<select name='flip_x'>";
   h += opt("0", "No", cfg.flip_x == 0);
   h += opt("1", "Yes", cfg.flip_x == 1);
   h += "</select>"
-       "<label>Mirror inner/outer (across tread)</label><select name='flip_y'>";
+       "<label>Mirror direction of travel</label><select name='flip_y'>";
   h += opt("0", "No", cfg.flip_y == 0);
   h += opt("1", "Yes", cfg.flip_y == 1);
   h += "</select></div>";
