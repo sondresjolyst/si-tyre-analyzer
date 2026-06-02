@@ -17,16 +17,16 @@ distance = W / (2 · tan(110° / 2)) ≈ 0.35 · W
 ```
 
 | Tread width | Distance |
-|------------:|---------:|
-| 155 mm      | 55 mm    |
-| 185 mm      | 65 mm    |
-| 205 mm      | 70 mm    |
-| 225 mm      | 80 mm    |
-| 245 mm      | 85 mm    |
-| 265 mm      | 95 mm    |
-| 285 mm      | 100 mm   |
-| 305 mm      | 105 mm   |
-| 325 mm      | 115 mm   |
+| ----------: | -------: |
+|      155 mm |    55 mm |
+|      185 mm |    65 mm |
+|      205 mm |    70 mm |
+|      225 mm |    80 mm |
+|      245 mm |    85 mm |
+|      265 mm |    95 mm |
+|      285 mm |   100 mm |
+|      305 mm |   105 mm |
+|      325 mm |   115 mm |
 
 These distances make the tread fill the frame edge to edge. Mount about 10 %
 farther so the shoulders stay in view with a little margin.
