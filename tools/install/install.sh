@@ -28,4 +28,13 @@ curl -fsSL "$wheel_url" -o "$tmp"
 echo "Installing..."
 uv tool install --force "$tmp"
 
+if [ "$(uname -s)" = "Darwin" ]; then
+	export PATH="$HOME/.local/bin:$PATH"
+	app=$(sita install-app 2>/dev/null) && {
+		echo "Created app bundle: $app"
+		echo "Done. Open 'SI Tyre Analyzer' from ~/Applications or Spotlight."
+		exit 0
+	}
+fi
+
 echo "Done. Launch it with:  si-tyre-analyzer"

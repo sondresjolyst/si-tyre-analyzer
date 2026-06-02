@@ -62,6 +62,16 @@ def _cmd_make_icon(args):
     print(render_ico(args.dest))
 
 
+def _cmd_install_app(args):
+    import sys
+
+    if sys.platform != "darwin":
+        raise SystemExit("install-app is macOS only.")
+    from .gui.macapp import build_app
+
+    print(build_app(args.dest))
+
+
 def _cmd_fetch(args):
     if args.all:
         for p in fetch.download_all(args.host, args.dest):
@@ -99,6 +109,10 @@ def main(argv=None):
     sp = sub.add_parser("make-icon")
     sp.add_argument("dest")
     sp.set_defaults(fn=_cmd_make_icon)
+
+    sp = sub.add_parser("install-app", help="build a macOS .app (Dock name/icon)")
+    sp.add_argument("--dest", default=None, help="dir for the .app (default ~/Applications)")
+    sp.set_defaults(fn=_cmd_install_app)
 
     sp = sub.add_parser("fetch")
     sp.add_argument("--host", default=DEFAULT_HOST)
