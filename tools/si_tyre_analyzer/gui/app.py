@@ -57,6 +57,7 @@ class MainWindow(QWidget):
         hb = QHBoxLayout(header)
         hb.setContentsMargins(16, 10, 16, 10)
         logo = QSvgWidget(str(ASSETS / "si_tyre_logo.svg"))
+        logo.setStyleSheet("background: transparent;")
         logo_h = 46
         native = logo.renderer().defaultSize()
         aspect = native.width() / native.height() if native.height() else 1.0
