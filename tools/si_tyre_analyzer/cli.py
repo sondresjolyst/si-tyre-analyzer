@@ -111,7 +111,9 @@ def main(argv=None):
     sp.set_defaults(fn=_cmd_make_icon)
 
     sp = sub.add_parser("install-app", help="build a macOS .app (Dock name/icon)")
-    sp.add_argument("--dest", default=None, help="dir for the .app (default ~/Applications)")
+    sp.add_argument(
+        "--dest", default=None, help="dir for the .app (default ~/Applications)"
+    )
     sp.set_defaults(fn=_cmd_install_app)
 
     sp = sub.add_parser("fetch")
