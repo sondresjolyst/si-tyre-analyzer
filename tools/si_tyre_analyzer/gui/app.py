@@ -57,7 +57,10 @@ class MainWindow(QWidget):
         hb = QHBoxLayout(header)
         hb.setContentsMargins(16, 10, 16, 10)
         logo = QSvgWidget(str(ASSETS / "si_tyre_logo.svg"))
-        logo.setFixedSize(110, 46)
+        logo_h = 46
+        native = logo.renderer().defaultSize()
+        aspect = native.width() / native.height() if native.height() else 1.0
+        logo.setFixedSize(round(logo_h * aspect), logo_h)
         hb.addWidget(logo)
         self._run_label = QLabel("")
         self._run_label.setStyleSheet(f"color:{theme.MUTED}; font-size:14px;")
