@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 from PySide6.QtWidgets import (
-    QCheckBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from ...constants import DEFAULT_HOST, WHEELS
 from .. import theme
-from ..heatmap_widget import TyreView
+from ..heatmap_widget import ScaleLegend, TyreView
 from ..icons import tool
 from ..net import LivePoller
 
@@ -36,7 +36,9 @@ class LivePage(QWidget):
         top_bar.addWidget(self._host)
         self._btn = tool("connect", "Connect", self._toggle)
         top_bar.addWidget(self._btn)
-        self._align = QCheckBox("Alignment guides")
+        self._align = QPushButton("Alignment guides")
+        self._align.setObjectName("toggle")
+        self._align.setCheckable(True)
         self._align.setToolTip("Show inner/mid/outer guides for mounting")
         self._align.toggled.connect(self._set_align)
         top_bar.addWidget(self._align)
@@ -53,6 +55,9 @@ class LivePage(QWidget):
             self._tyres[w] = tv
             grid.addWidget(tv, i // 2, i % 2)
         root.addLayout(grid, 1)
+
+        self._legend = ScaleLegend()
+        root.addWidget(self._legend)
 
     def _set_align(self, on: bool):
         for tv in self._tyres.values():
@@ -77,6 +82,8 @@ class LivePage(QWidget):
         self._btn.setToolTip("Connect")
         self._status.setStyleSheet(f"color:{theme.MUTED};")
         self._status.setText("Not connected")
+        for tv in self._tyres.values():
+            tv.clear()
 
     def _on_data(self, d: dict):
         cols, rows = int(d.get("cols", 0)), int(d.get("rows", 0))
