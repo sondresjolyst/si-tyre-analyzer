@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.4.0...si-tyre-analyzer-v0.5.0) (2026-06-03)
+
+
+### Features
+
+* **app:** fixed colour scale, unified fonts, Analysis polish ([#28](https://github.com/sondresjolyst/si-tyre-analyzer/issues/28)) ([e794599](https://github.com/sondresjolyst/si-tyre-analyzer/commit/e7945994dc9a8e51950a4e04fea7b51f62854013))
+
 ## [0.4.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.3.0...si-tyre-analyzer-v0.4.0) (2026-06-02)
 
 
