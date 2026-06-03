@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date as _date
 from pathlib import Path
 
 import matplotlib
@@ -40,6 +41,11 @@ LOGO = Path(__file__).resolve().parent.parent / "assets" / "si_tyre_logo.svg"
 A4_MM = (297, 210)
 A4_LANDSCAPE = (A4_MM[0] / 25.4, A4_MM[1] / 25.4)
 EXPORT_DPI = 200
+# (left, bottom, width, height) constrained-layout rects. On screen only a thin
+# top band is reserved for the legend so graphs stay large; export adds side and
+# bottom margins plus room for the page title + footer.
+SCREEN_RECT = (0, 0, 1, 0.90)
+REPORT_RECT = (0.03, 0.07, 0.94, 0.82)
 
 
 def _svg_array(path, width=2400):
@@ -251,8 +257,18 @@ class AnalysisPage(QWidget):
         ax.axis("off")
         ax.text(
             0.0,
+            1.06,
+            "TYRE TEMPERATURE REPORT",
+            transform=ax.transAxes,
+            color=theme.ACCENT,
+            fontsize=11,
+            fontweight="bold",
+            va="top",
+        )
+        ax.text(
+            0.0,
             1.0,
-            run_label(self._run),
+            run_label(self._run) or "Tyre session",
             transform=ax.transAxes,
             color=theme.TEXT,
             fontsize=22,
@@ -328,14 +344,80 @@ class AnalysisPage(QWidget):
                 fig = self._tab_figs()[self._tabs.currentIndex()]
                 self._save_a4(fig, path=path)
             else:
-                with PdfPages(path) as pdf:
-                    self._save_a4(self._cover_fig(sid), pdf=pdf)
-                    for fig in self._tab_figs():
-                        self._save_a4(fig, pdf=pdf)
+                self._save_pdf(path, sid)
         except OSError as e:
             QMessageBox.warning(self, "Export failed", str(e))
             return
         QMessageBox.information(self, "Export", f"Saved {path}")
+
+    _PAGE_TITLES = [
+        "Tyre temperature over the run",
+        "Tread profile across the tyre width",
+        "Run balance",
+        "Temperature per lap",
+    ]
+
+    def _save_pdf(self, path, sid):
+        run = run_label(self._run) or "Tyre session"
+        pages = list(zip(self._tab_figs(), self._PAGE_TITLES))
+        if not self._laps:  # skip the empty Per-lap page
+            pages = [p for p in pages if p[1] != "Temperature per lap"]
+        total = len(pages) + 1
+        with PdfPages(path) as pdf:
+            cover = self._cover_fig(sid)
+            arts = self._foot(cover, f"{run}  ·  1 / {total}")
+            self._save_a4(cover, pdf=pdf)
+            for a in arts:
+                a.remove()
+            for i, (fig, title) in enumerate(pages, start=2):
+                cleanup = self._decorate(fig, title, f"{run}  ·  {i} / {total}")
+                self._save_a4(fig, pdf=pdf)
+                cleanup()
+
+    @staticmethod
+    def _foot(fig, right):
+        return [
+            fig.text(
+                0.035,
+                0.02,
+                f"Generated {_date.today().isoformat()}",
+                color=theme.MUTED_2,
+                fontsize=8,
+                ha="left",
+            ),
+            fig.text(0.965, 0.02, right, color=theme.MUTED_2, fontsize=8, ha="right"),
+        ]
+
+    def _decorate(self, fig, title, footer):
+        arts = [
+            fig.suptitle(
+                title,
+                x=0.045,
+                y=0.975,
+                ha="left",
+                color=theme.TEXT,
+                fontsize=14,
+                fontweight="bold",
+            ),
+            *self._foot(fig, footer),
+        ]
+        constrained = (
+            type(fig.get_layout_engine()).__name__ == "ConstrainedLayoutEngine"
+        )
+        if constrained:
+            fig.set_layout_engine(
+                "constrained", rect=REPORT_RECT, w_pad=0.08, h_pad=0.08
+            )
+
+        def cleanup():
+            for a in arts:
+                a.remove()
+            if constrained:
+                fig.set_layout_engine(
+                    "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+                )
+
+        return cleanup
 
     @staticmethod
     def _save_a4(fig, pdf=None, path=None):
@@ -392,6 +474,9 @@ class AnalysisPage(QWidget):
         a.set_title(text, loc="right", color=theme.MUTED, fontsize=8)
 
     def _plot_profile(self):
+        self._fig_prof.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
         ax = self._axes(self._fig_prof)
         for w, a in ax.items():
             s = self._run.get(w)
@@ -424,6 +509,9 @@ class AnalysisPage(QWidget):
     def _plot_over(self):
         lo, hi = self._lo.value(), self._hi.value()
         off = self._off.value()
+        self._fig_over.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
         ax = self._axes(self._fig_over)
         handles = None
         data = {}
@@ -469,7 +557,8 @@ class AnalysisPage(QWidget):
         if handles:
             self._fig_over.legend(
                 *handles,
-                loc="outside upper center",
+                loc="upper center",
+                bbox_to_anchor=(0.5, 0.95),
                 ncol=3,
                 fontsize=9,
                 labelcolor=theme.TEXT,
@@ -491,7 +580,7 @@ class AnalysisPage(QWidget):
     def _plot_balance(self):
         self._fig_bal.clear()
         self._fig_bal.set_layout_engine("none")
-        ax = self._fig_bal.add_axes([0.03, 0.13, 0.94, 0.85])
+        ax = self._fig_bal.add_axes([0.03, 0.12, 0.94, 0.80])
         ax.set_xlim(0, 3.56)
         ax.set_ylim(0, 2.3)
         ax.set_aspect("equal")
@@ -609,6 +698,9 @@ class AnalysisPage(QWidget):
 
     def _plot_laps(self):
         self._fig_lap.clear()
+        self._fig_lap.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
         a = self._fig_lap.add_subplot(111)
         self._style(a)
         if not self._laps:
@@ -652,7 +744,8 @@ class AnalysisPage(QWidget):
         self._fig_lap.legend(
             ncol=4,
             fontsize=9,
-            loc="outside upper center",
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.95),
             labelcolor=theme.TEXT,
             frameon=False,
         )

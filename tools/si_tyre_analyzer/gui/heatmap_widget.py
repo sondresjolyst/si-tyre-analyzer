@@ -82,7 +82,7 @@ class _HeatCanvas(QWidget):
                         str(round(float(g[r, c]))),
                     )
         if self._align:
-            self._draw_guides(p, cols, ox, oy, w, h)
+            self._draw_guides(p, cols, (ox, oy, w, h))
 
     def _patch_rect(self) -> tuple[int, int, int, int]:
         aw, ah = self.width(), self.height()
@@ -90,9 +90,10 @@ class _HeatCanvas(QWidget):
         h = min(ah, round(w / PATCH_ASPECT))
         return (aw - w) // 2, (ah - h) // 2, w, h
 
-    def _draw_guides(self, p, cols, ox, oy, w, h):
+    def _draw_guides(self, p, cols, rect):
         # Columns run across the tyre tread (inner -> outer); the centre row
         # line marks the around-the-tyre middle.
+        ox, oy, w, h = rect
         p.setPen(QColor(255, 255, 255, 150))
         p.drawLine(ox, oy + h // 2, ox + w, oy + h // 2)
         for c in (cols // 3, 2 * cols // 3):
