@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.2.0...si-tyre-analyzer-app-v0.3.0) (2026-06-03)
+
+
+### Features
+
+* **app:** desktop icon, no-console launcher, detached self-update ([#14](https://github.com/sondresjolyst/si-tyre-analyzer/issues/14)) ([ff4b8fc](https://github.com/sondresjolyst/si-tyre-analyzer/commit/ff4b8fcb2b85869805f9647939ecf317c4abc33f))
+* **app:** drag-drop import and right-click run menu ([#18](https://github.com/sondresjolyst/si-tyre-analyzer/issues/18)) ([4a53c1f](https://github.com/sondresjolyst/si-tyre-analyzer/commit/4a53c1f9916a3172701dd5ebe00eccdf5154e39b))
+* **app:** header run name + About, shortcuts, edit button, Documents folder ([#23](https://github.com/sondresjolyst/si-tyre-analyzer/issues/23)) ([793ad93](https://github.com/sondresjolyst/si-tyre-analyzer/commit/793ad93b0fc2c9755446389a721f8ca2a967ae38))
+* **app:** icon toolbars and themed combo/spin controls ([#20](https://github.com/sondresjolyst/si-tyre-analyzer/issues/20)) ([51636fc](https://github.com/sondresjolyst/si-tyre-analyzer/commit/51636fcce9496d112dc921af8c5f34f0e7ce8969))
+* **app:** keyboard control in the heatmap viewer ([#19](https://github.com/sondresjolyst/si-tyre-analyzer/issues/19)) ([939d8fb](https://github.com/sondresjolyst/si-tyre-analyzer/commit/939d8fba899d2ee55057953faa058513099dfd96))
+* **app:** macOS .app bundle ([#27](https://github.com/sondresjolyst/si-tyre-analyzer/issues/27)) ([0a46138](https://github.com/sondresjolyst/si-tyre-analyzer/commit/0a4613865817fccc021de8a1a0ea3914a3cb91f7))
+* **app:** remember window size, empty-state hints, run search, status polish ([#21](https://github.com/sondresjolyst/si-tyre-analyzer/issues/21)) ([4d7f4d2](https://github.com/sondresjolyst/si-tyre-analyzer/commit/4d7f4d232f0cf15fdfc35098e5ead28f9e0eb474))
+* **app:** safe delete, skip reporting, download progress ([#26](https://github.com/sondresjolyst/si-tyre-analyzer/issues/26)) ([1403cbd](https://github.com/sondresjolyst/si-tyre-analyzer/commit/1403cbd030ffcda73a3f648c5398ed30b123e5e8))
+* **app:** sidebar icons and collapsible Analysis sub-nav ([#22](https://github.com/sondresjolyst/si-tyre-analyzer/issues/22)) ([1212ffd](https://github.com/sondresjolyst/si-tyre-analyzer/commit/1212ffd5e463e19e17bc67025536a9503fa54bbc))
+* sensor mount-alignment aids (flip config, live guides, mounting doc) ([#24](https://github.com/sondresjolyst/si-tyre-analyzer/issues/24)) ([6d24cc8](https://github.com/sondresjolyst/si-tyre-analyzer/commit/6d24cc882df3227c0957e9b1f03d6f0f4504f2d9))
+
+
+### Bug Fixes
+
+* expand SVG width to prevent tagline text cutoff ([#25](https://github.com/sondresjolyst/si-tyre-analyzer/issues/25)) ([83d39eb](https://github.com/sondresjolyst/si-tyre-analyzer/commit/83d39eb8922a993c0061ceefe0ca230c38f1c2a8))
+
 ## [0.2.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.1.0...si-tyre-analyzer-app-v0.2.0) (2026-05-31)
 
 
