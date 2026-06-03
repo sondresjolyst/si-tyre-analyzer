@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QFont, QIcon, QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QApplication,
@@ -275,6 +275,7 @@ class MainWindow(QWidget):
 def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ASSETS / "si_tyre_mark.svg")))
+    app.setFont(QFont(theme.UI_FONT))
     app.setStyleSheet(DARK_QSS)
     win = MainWindow()
     win.show()

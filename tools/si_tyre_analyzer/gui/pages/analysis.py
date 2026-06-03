@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date as _date
 from pathlib import Path
 
 import matplotlib
@@ -12,6 +13,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from matplotlib.patches import FancyBboxPatch
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
@@ -25,10 +27,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...constants import WHEELS
+from ...constants import TEMP_SCALE_HI, TEMP_SCALE_LO, WHEELS
 from ...lapdata import parse_laps
 from .. import meta, prefs, theme
-from ..colors import tyre_cmap
+from ..colors import heat_rgb, tyre_cmap
 from ..icons import icon, tool
 from ..runs import DEFAULT_DIR, run_label
 from ..widgets import RunSelector
@@ -38,6 +40,12 @@ LOGO = Path(__file__).resolve().parent.parent / "assets" / "si_tyre_logo.svg"
 # A4 landscape in mm; matplotlib figsize is in inches, so divide by 25.4.
 A4_MM = (297, 210)
 A4_LANDSCAPE = (A4_MM[0] / 25.4, A4_MM[1] / 25.4)
+EXPORT_DPI = 200
+# (left, bottom, width, height) constrained-layout rects. On screen only a thin
+# top band is reserved for the legend so graphs stay large; export adds side and
+# bottom margins plus room for the page title + footer.
+SCREEN_RECT = (0, 0, 1, 0.90)
+REPORT_RECT = (0.03, 0.07, 0.94, 0.82)
 
 
 def _svg_array(path, width=2400):
@@ -72,23 +80,12 @@ def _bands(s):
     return inner, middle, outer
 
 
-def _crown(inner, middle, outer):
-    i, m, o = inner.mean(), middle.mean(), outer.mean()
-    edges = (i + o) / 2
-    if m - edges > 3:
-        return "centre hot"
-    if edges - m > 3:
-        return "shoulders hot"
-    return "flat"
-
-
 class AnalysisPage(QWidget):
     """Tread profile, temperature over time, time-in-window, and balance."""
 
     # (icon, label) per tab, in tab order — also used to build the sidebar.
     SECTIONS = [
         ("trend", "Over time"),
-        ("window", "In window"),
         ("profile", "Profile"),
         ("balance", "Balance"),
         ("flag", "Per lap"),
@@ -99,6 +96,7 @@ class AnalysisPage(QWidget):
 
     def __init__(self):
         super().__init__()
+        theme.apply_matplotlib()
         self._run = {}
         self._laps = []
 
@@ -116,6 +114,7 @@ class AnalysisPage(QWidget):
         self._hi.setRange(0, 200)
         self._hi.setValue(win_hi)
         for sb in (self._lo, self._hi):
+            sb.setKeyboardTracking(False)
             sb.valueChanged.connect(self._window_changed)
             top_bar.addWidget(sb)
         top_bar.addWidget(tool("flag", "Load lap CSV…", self._load_laps))
@@ -123,6 +122,7 @@ class AnalysisPage(QWidget):
         self._off = QDoubleSpinBox()
         self._off.setRange(-3600, 3600)
         self._off.setSingleStep(1)
+        self._off.setKeyboardTracking(False)
         self._off.valueChanged.connect(self._on_offset)
         top_bar.addWidget(self._off)
         self._lapinfo = QLabel("no laps")
@@ -137,34 +137,21 @@ class AnalysisPage(QWidget):
         self._fig_over = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_prof = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_bal = Figure(facecolor=theme.BG, layout="constrained")
-        self._fig_win = Figure(facecolor=theme.BG, layout="constrained")
         self._fig_lap = Figure(facecolor=theme.BG, layout="constrained")
         self._c_over = FigureCanvasQTAgg(self._fig_over)
         self._c_prof = FigureCanvasQTAgg(self._fig_prof)
         self._c_bal = FigureCanvasQTAgg(self._fig_bal)
-        self._c_win = FigureCanvasQTAgg(self._fig_win)
         self._c_lap = FigureCanvasQTAgg(self._fig_lap)
         self._tabs.addTab(
-            self._captioned(
-                self._c_over,
-                "Tyre temperature over the run vs the target window.",
-            ),
+            self._captioned(self._c_over, "Tyre temperature over the run."),
             icon("trend"),
             "Over time",
         )
         self._tabs.addTab(
             self._captioned(
-                self._c_win,
-                "Share of the run each tyre spent below, inside, and above the "
-                "target window.",
-            ),
-            icon("window"),
-            "In window",
-        )
-        self._tabs.addTab(
-            self._captioned(
                 self._c_prof,
-                "Across-tread temperature (inner / middle / outer) per tyre.",
+                "Average temperature across the tyre width — inner edge, middle, "
+                "outer edge — per wheel.",
             ),
             icon("profile"),
             "Profile",
@@ -183,7 +170,8 @@ class AnalysisPage(QWidget):
     def _lap_panel(self):
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(6, 6, 6, 6)
+        v.setContentsMargins(14, 12, 14, 12)
+        v.setSpacing(8)
         cap = QLabel("Average tread temperature per lap per wheel.")
         cap.setStyleSheet(f"color:{theme.MUTED};")
         cap.setWordWrap(True)
@@ -193,9 +181,10 @@ class AnalysisPage(QWidget):
         self._band_btns = {}
         for name, default in (("inner", False), ("mid", True), ("outer", False)):
             b = QPushButton(name)
+            b.setObjectName("toggle")
             b.setCheckable(True)
             b.setChecked(default)
-            b.setMaximumWidth(64)
+            b.setMaximumWidth(72)
             b.toggled.connect(self._plot_laps)
             self._band_btns[name] = b
             row.addWidget(b)
@@ -207,7 +196,8 @@ class AnalysisPage(QWidget):
     def _captioned(self, canvas, text):
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(6, 6, 6, 6)
+        v.setContentsMargins(14, 12, 14, 12)
+        v.setSpacing(8)
         cap = QLabel(text)
         cap.setStyleSheet(f"color:{theme.MUTED};")
         cap.setWordWrap(True)
@@ -244,9 +234,8 @@ class AnalysisPage(QWidget):
         # Same order as the tabs were added.
         return [
             self._fig_over,
-            self._fig_win,
             self._fig_prof,
-            self._fig_bal,
+            self._balance_fig(),
             self._fig_lap,
         ]
 
@@ -268,8 +257,18 @@ class AnalysisPage(QWidget):
         ax.axis("off")
         ax.text(
             0.0,
+            1.06,
+            "TYRE TEMPERATURE REPORT",
+            transform=ax.transAxes,
+            color=theme.ACCENT,
+            fontsize=11,
+            fontweight="bold",
+            va="top",
+        )
+        ax.text(
+            0.0,
             1.0,
-            run_label(self._run),
+            run_label(self._run) or "Tyre session",
             transform=ax.transAxes,
             color=theme.TEXT,
             fontsize=22,
@@ -345,14 +344,80 @@ class AnalysisPage(QWidget):
                 fig = self._tab_figs()[self._tabs.currentIndex()]
                 self._save_a4(fig, path=path)
             else:
-                with PdfPages(path) as pdf:
-                    self._save_a4(self._cover_fig(sid), pdf=pdf)
-                    for fig in self._tab_figs():
-                        self._save_a4(fig, pdf=pdf)
+                self._save_pdf(path, sid)
         except OSError as e:
             QMessageBox.warning(self, "Export failed", str(e))
             return
         QMessageBox.information(self, "Export", f"Saved {path}")
+
+    _PAGE_TITLES = [
+        "Tyre temperature over the run",
+        "Tread profile across the tyre width",
+        "Run balance",
+        "Temperature per lap",
+    ]
+
+    def _save_pdf(self, path, sid):
+        run = run_label(self._run) or "Tyre session"
+        pages = list(zip(self._tab_figs(), self._PAGE_TITLES))
+        if not self._laps:  # skip the empty Per-lap page
+            pages = [p for p in pages if p[1] != "Temperature per lap"]
+        total = len(pages) + 1
+        with PdfPages(path) as pdf:
+            cover = self._cover_fig(sid)
+            arts = self._foot(cover, f"{run}  ·  1 / {total}")
+            self._save_a4(cover, pdf=pdf)
+            for a in arts:
+                a.remove()
+            for i, (fig, title) in enumerate(pages, start=2):
+                cleanup = self._decorate(fig, title, f"{run}  ·  {i} / {total}")
+                self._save_a4(fig, pdf=pdf)
+                cleanup()
+
+    @staticmethod
+    def _foot(fig, right):
+        return [
+            fig.text(
+                0.035,
+                0.02,
+                f"Generated {_date.today().isoformat()}",
+                color=theme.MUTED_2,
+                fontsize=8,
+                ha="left",
+            ),
+            fig.text(0.965, 0.02, right, color=theme.MUTED_2, fontsize=8, ha="right"),
+        ]
+
+    def _decorate(self, fig, title, footer):
+        arts = [
+            fig.suptitle(
+                title,
+                x=0.045,
+                y=0.975,
+                ha="left",
+                color=theme.TEXT,
+                fontsize=14,
+                fontweight="bold",
+            ),
+            *self._foot(fig, footer),
+        ]
+        constrained = (
+            type(fig.get_layout_engine()).__name__ == "ConstrainedLayoutEngine"
+        )
+        if constrained:
+            fig.set_layout_engine(
+                "constrained", rect=REPORT_RECT, w_pad=0.08, h_pad=0.08
+            )
+
+        def cleanup():
+            for a in arts:
+                a.remove()
+            if constrained:
+                fig.set_layout_engine(
+                    "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+                )
+
+        return cleanup
 
     @staticmethod
     def _save_a4(fig, pdf=None, path=None):
@@ -361,9 +426,9 @@ class AnalysisPage(QWidget):
         old = fig.get_size_inches()
         fig.set_size_inches(A4_LANDSCAPE)
         if pdf is not None:
-            pdf.savefig(fig, facecolor=fig.get_facecolor(), dpi=200)
+            pdf.savefig(fig, facecolor=fig.get_facecolor(), dpi=EXPORT_DPI)
         else:
-            fig.savefig(path, facecolor=fig.get_facecolor(), dpi=200)
+            fig.savefig(path, facecolor=fig.get_facecolor(), dpi=EXPORT_DPI)
         fig.set_size_inches(old)
 
     def _on_offset(self):
@@ -379,22 +444,39 @@ class AnalysisPage(QWidget):
         self._plot_profile()
         self._plot_over()
         self._plot_balance()
-        self._plot_window()
         self._plot_laps()
+
+    @staticmethod
+    def _style(a, grid: bool = True):
+        a.set_facecolor(theme.SURFACE)
+        a.tick_params(colors=theme.MUTED, labelsize=8)
+        a.spines["top"].set_visible(False)
+        a.spines["right"].set_visible(False)
+        a.spines["left"].set_color(theme.BORDER)
+        a.spines["bottom"].set_color(theme.BORDER)
+        if grid:
+            a.grid(True, axis="y", color=theme.BORDER, alpha=0.35, linewidth=0.6)
+            a.set_axisbelow(True)
 
     def _axes(self, fig):
         fig.clear()
         ax = {}
         for w, (r, c) in POS.items():
-            a = fig.add_subplot(2, 2, r * 2 + c + 1, facecolor=theme.SURFACE)
-            a.set_title(w, color=theme.TEXT, fontsize=10)
-            a.tick_params(colors=theme.MUTED, labelsize=8)
-            for sp in a.spines.values():
-                sp.set_color(theme.BORDER)
+            a = fig.add_subplot(2, 2, r * 2 + c + 1)
+            self._style(a)
+            # Wheel always top-left; each plot fills the metric top-right.
+            a.set_title(w, loc="left", color=theme.TEXT, fontweight="bold")
             ax[w] = a
         return ax
 
+    @staticmethod
+    def _metric(a, text):
+        a.set_title(text, loc="right", color=theme.MUTED, fontsize=8)
+
     def _plot_profile(self):
+        self._fig_prof.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
         ax = self._axes(self._fig_prof)
         for w, a in ax.items():
             s = self._run.get(w)
@@ -402,129 +484,202 @@ class AnalysisPage(QWidget):
                 continue
             i, m, o = _bands(s)
             vals = [i.mean(), m.mean(), o.mean()]
-            a.bar(
+            bars = a.bar(
                 ["inner", "mid", "outer"],
                 vals,
                 color=[theme.INNER, theme.MID_BAR, theme.OUTER],
             )
-            a.set_title(
-                f"{w}  inner−outer {vals[0] - vals[2]:+.1f}°  ·  {_crown(i, m, o)}",
+            a.bar_label(
+                bars,
+                fmt="%.0f°",
                 color=theme.TEXT,
                 fontsize=9,
+                padding=2,
+                fontfamily="monospace",
+            )
+            edges = (vals[0] + vals[2]) / 2
+            self._metric(
+                a,
+                f"in−out {vals[0] - vals[2]:+.1f}°   mid−edge {vals[1] - edges:+.1f}°",
             )
             a.set_ylabel("°C", color=theme.MUTED, fontsize=8)
+            a.set_ylim(0, TEMP_SCALE_HI)
         self._c_prof.draw_idle()
 
     def _plot_over(self):
         lo, hi = self._lo.value(), self._hi.value()
+        off = self._off.value()
+        self._fig_over.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
         ax = self._axes(self._fig_over)
+        handles = None
+        data = {}
+        gmin, gmax = lo, hi
         for w, a in ax.items():
             s = self._run.get(w)
             if s is None:
                 continue
-            t = s.t_offsets_ms / 1000.0
             i, m, o = _bands(s)
+            data[w] = (s.t_offsets_ms / 1000.0, i, m, o)
+            gmin = min(gmin, i.min(), m.min(), o.min())
+            gmax = max(gmax, i.max(), m.max(), o.max())
+        pad = max(2.0, (gmax - gmin) * 0.08)
+        ylo, yhi = gmin - pad, gmax + pad
+        for w, a in ax.items():
+            if w not in data:
+                continue
+            t, i, m, o = data[w]
             a.axhspan(lo, hi, color=theme.IN_WINDOW, alpha=0.10)
-            a.plot(t, i, label="inner", lw=1.2, color=theme.INNER)
-            a.plot(t, m, label="mid", lw=1.2, color=theme.MID)
-            a.plot(t, o, label="outer", lw=1.2, color=theme.OUTER)
-            off = self._off.value()
-            ytop = a.get_ylim()[1]
+            a.plot(t, i, label="inner", lw=1.4, color=theme.INNER)
+            a.plot(t, m, label="mid", lw=1.4, color=theme.MID)
+            a.plot(t, o, label="outer", lw=1.4, color=theme.OUTER)
+            handles = a.get_legend_handles_labels()
+            a.set_ylim(ylo, yhi)
             for lap in self._laps:
                 x = lap.start_s + off
                 if t[0] <= x <= t[-1]:
                     a.axvline(x, color=theme.MUTED_2, lw=0.6, alpha=0.6)
                     a.text(
                         x,
-                        ytop,
+                        yhi,
                         str(lap.lap),
                         color=theme.MUTED,
                         fontsize=6,
                         ha="left",
                         va="top",
                     )
-            inwin = np.mean((m >= lo) & (m <= hi)) * 100
-            a.set_title(f"{w}  {inwin:.0f}% in window", color=theme.TEXT, fontsize=9)
-            a.legend(
-                fontsize=6, loc="upper right", labelcolor=theme.TEXT, facecolor=theme.BG
+            temp = self._run[w].grids.mean(axis=(1, 2))
+            below = float(np.mean(temp < lo)) * 100
+            inw = float(np.mean((temp >= lo) & (temp <= hi))) * 100
+            above = float(np.mean(temp > hi)) * 100
+            self._metric(a, f"below {below:.0f}% · in {inw:.0f}% · above {above:.0f}%")
+        if handles:
+            self._fig_over.legend(
+                *handles,
+                loc="upper center",
+                bbox_to_anchor=(0.5, 0.95),
+                ncol=3,
+                fontsize=9,
+                labelcolor=theme.TEXT,
+                frameon=False,
             )
         self._c_over.draw_idle()
 
-    def _plot_window(self):
-        lo, hi = self._lo.value(), self._hi.value()
-        self._fig_win.clear()
-        a = self._fig_win.add_subplot(111, facecolor=theme.SURFACE)
-        present = [w for w in WHEELS if self._run.get(w) is not None]
-        y = range(len(present))
-        for k, w in enumerate(present):
-            _, m, _ = _bands(self._run[w])
-            below = float(np.mean(m < lo)) * 100
-            inw = float(np.mean((m >= lo) & (m <= hi))) * 100
-            above = float(np.mean(m > hi)) * 100
-            a.barh(k, below, color=theme.INNER)
-            a.barh(k, inw, left=below, color=theme.IN_WINDOW)
-            a.barh(k, above, left=below + inw, color=theme.OUTER)
-            a.text(
-                inw / 2 + below,
-                k,
-                f"{inw:.0f}%",
-                va="center",
-                ha="center",
-                color=theme.BG_DEEP,
-                fontsize=9,
-                fontweight="bold",
-            )
-        a.set_yticks(list(y))
-        a.set_yticklabels(present, color=theme.TEXT)
-        a.set_xlim(0, 100)
-        a.set_xlabel("% of run", color=theme.MUTED)
-        a.tick_params(colors=theme.MUTED)
-        for sp in a.spines.values():
-            sp.set_color(theme.BORDER)
-        a.legend(
-            ["below", "in window", "above"],
-            fontsize=7,
-            ncol=3,
-            loc="upper center",
-            labelcolor=theme.TEXT,
-            facecolor=theme.BG,
-        )
-        self._c_win.draw_idle()
+    # Tile corner (x, y) per wheel — laid out like the car seen from above.
+    # Portrait tile (0.78 : 1) to match the Live/Viewer patch shape; the wide
+    # gap between columns matches the figure ratio so the card fills the width.
+    _CAR = {
+        "FL": (0.55, 1.15),
+        "FR": (2.23, 1.15),
+        "RL": (0.55, 0.05),
+        "RR": (2.23, 0.05),
+    }
+    _TILE = (0.78, 1.0)
 
     def _plot_balance(self):
-        cmap = tyre_cmap()
-        avgs = {}
-        for w in WHEELS:
-            s = self._run.get(w)
-            avgs[w] = float(s.grids.mean()) if s is not None else float("nan")
-        allv = [v for v in avgs.values() if not np.isnan(v)]
-        vmin, vmax = (min(allv), max(allv)) if allv else (0, 1)
+        self._fig_bal.clear()
+        self._fig_bal.set_layout_engine("none")
+        ax = self._fig_bal.add_axes([0.03, 0.12, 0.94, 0.80])
+        ax.set_xlim(0, 3.56)
+        ax.set_ylim(0, 2.3)
+        ax.set_aspect("equal")
+        ax.axis("off")
 
-        ax = self._axes(self._fig_bal)
-        for w, a in ax.items():
+        avgs = {}
+        tw, th = self._TILE
+        for w, (x, y) in self._CAR.items():
             s = self._run.get(w)
-            if s is None:
-                a.set_axis_off()
-                continue
-            a.imshow(
-                s.grids.mean(axis=0), cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto"
+            ax.text(
+                x + 0.06,
+                y + th - 0.07,
+                w,
+                color=theme.TEXT,
+                fontsize=11,
+                fontweight="bold",
+                va="top",
+                ha="left",
+                zorder=3,
             )
-            a.set_xticks([])
-            a.set_yticks([])
-            a.set_title(f"{w}  {avgs[w]:.1f}°", color=theme.TEXT, fontsize=9)
+            if s is None:
+                ax.add_patch(
+                    FancyBboxPatch(
+                        (x, y),
+                        tw,
+                        th,
+                        boxstyle="round,pad=0,rounding_size=0.12",
+                        facecolor=theme.SURFACE,
+                        edgecolor=theme.BORDER,
+                        lw=1,
+                    )
+                )
+                continue
+            av = float(s.grids.mean())
+            avgs[w] = av
+            rr, gg, bb = heat_rgb(av, TEMP_SCALE_LO, TEMP_SCALE_HI)
+            ax.add_patch(
+                FancyBboxPatch(
+                    (x, y),
+                    tw,
+                    th,
+                    boxstyle="round,pad=0,rounding_size=0.12",
+                    facecolor=(rr / 255, gg / 255, bb / 255),
+                    edgecolor=theme.BORDER,
+                    lw=1,
+                )
+            )
+            ax.text(
+                x + tw / 2,
+                y + th / 2 - 0.04,
+                f"{av:.0f}°",
+                color=theme.WHITE,
+                fontsize=26,
+                fontweight="bold",
+                fontfamily="monospace",
+                ha="center",
+                va="center",
+                zorder=3,
+            )
 
         def avg(*ws):
-            xs = [avgs[w] for w in ws if not np.isnan(avgs[w])]
+            xs = [avgs[w] for w in ws if w in avgs]
             return sum(xs) / len(xs) if xs else float("nan")
 
         fr = avg("FL", "FR") - avg("RL", "RR")
         lr = avg("FL", "RL") - avg("FR", "RR")
-        self._fig_bal.suptitle(
-            f"front−rear {fr:+.1f}°    left−right {lr:+.1f}°",
-            color=theme.TEXT,
-            fontsize=10,
+        ax.text(
+            1.78,
+            1.05,
+            f"front−rear\n{fr:+.1f}°\n\nleft−right\n{lr:+.1f}°",
+            color=theme.TEXT_DIM,
+            fontsize=9,
+            ha="center",
+            va="center",
+            linespacing=1.4,
         )
+
+        self._balance_legend()
         self._c_bal.draw_idle()
+
+    def _balance_legend(self):
+        cax = self._fig_bal.add_axes([0.34, 0.055, 0.32, 0.012])
+        grad = np.linspace(0, 1, 256)[None, :]
+        cax.imshow(
+            grad,
+            aspect="auto",
+            cmap=tyre_cmap(),
+            extent=[TEMP_SCALE_LO, TEMP_SCALE_HI, 0, 1],
+        )
+        cax.set_yticks([])
+        cax.set_xticks(
+            [TEMP_SCALE_LO, (TEMP_SCALE_LO + TEMP_SCALE_HI) / 2, TEMP_SCALE_HI]
+        )
+        cax.tick_params(colors=theme.MUTED, labelsize=8, length=0)
+        for sp in cax.spines.values():
+            sp.set_color(theme.BORDER)
+
+    def _balance_fig(self):
+        return self._fig_bal
 
     def _lap_avg(self, t, arr, off):
         nums = []
@@ -543,10 +698,11 @@ class AnalysisPage(QWidget):
 
     def _plot_laps(self):
         self._fig_lap.clear()
-        a = self._fig_lap.add_subplot(111, facecolor=theme.SURFACE)
-        a.tick_params(colors=theme.MUTED)
-        for sp in a.spines.values():
-            sp.set_color(theme.BORDER)
+        self._fig_lap.set_layout_engine(
+            "constrained", rect=SCREEN_RECT, w_pad=0.04, h_pad=0.04
+        )
+        a = self._fig_lap.add_subplot(111)
+        self._style(a)
         if not self._laps:
             a.text(
                 0.5,
@@ -560,12 +716,7 @@ class AnalysisPage(QWidget):
             self._c_lap.draw_idle()
             return
         off = self._off.value()
-        colors = {
-            "FL": theme.INNER,
-            "FR": theme.OUTER,
-            "RL": theme.IN_WINDOW,
-            "RR": theme.MID,
-        }
+        colors = theme.WHEEL_COLORS
         # (band name, index into _bands, line style)
         styles = (("inner", 0, "--"), ("mid", 1, "-"), ("outer", 2, ":"))
         bands = [b for b in styles if self._band_btns[b[0]].isChecked()]
@@ -590,5 +741,12 @@ class AnalysisPage(QWidget):
                     )
         a.set_xlabel("lap", color=theme.MUTED)
         a.set_ylabel("°C", color=theme.MUTED)
-        a.legend(fontsize=7, ncol=4, labelcolor=theme.TEXT, facecolor=theme.BG)
+        self._fig_lap.legend(
+            ncol=4,
+            fontsize=9,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.95),
+            labelcolor=theme.TEXT,
+            frameon=False,
+        )
         self._c_lap.draw_idle()

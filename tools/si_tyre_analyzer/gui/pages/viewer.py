@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...constants import WHEELS
-from ..heatmap_widget import TyreView
+from ..heatmap_widget import ScaleLegend, TyreView
 from ..icons import icon, tool
 from ..widgets import RunSelector
 
@@ -47,6 +47,9 @@ class ViewerPage(QWidget):
             self._tyres[w] = tv
             grid.addWidget(tv, i // 2, i % 2)
         root.addLayout(grid, 1)
+
+        self._legend = ScaleLegend()
+        root.addWidget(self._legend)
 
         sl = QHBoxLayout()
         self._play = tool("play", "Play / pause (Space)", self._toggle_play)

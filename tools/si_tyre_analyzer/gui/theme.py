@@ -27,15 +27,65 @@ GRID_TEXT = "#e5e7eb"
 ACCENT = "#2563eb"
 ACCENT_HOVER = "#1d4ed8"
 
-# Semantic plot colours
+# Fonts. One UI family for all text; one mono family for numeric readouts only
+# (heatmap digits, min/avg/max, gauge labels). Same families fed to matplotlib
+# so charts match the rest of the app.
+UI_FONT = "Segoe UI"
+MONO_FAMILIES = ["Consolas", "Cascadia Mono", "DejaVu Sans Mono"]
+MONO = "Consolas, 'Cascadia Mono', 'DejaVu Sans Mono', monospace"
+
+# Semantic plot colours — tread bands (inner / mid / outer) and window status
 INNER = "#60a5fa"
 MID = "#d4d4d4"
 MID_BAR = "#a3a3a3"
 OUTER = "#f87171"
 IN_WINDOW = "#22c55e"
 
+# Categorical per-wheel colours — an on-brand set (cool/warm pairs) for the
+# per-lap chart where each line is a wheel rather than a tread band.
+WHEEL_COLORS = {"FL": "#60a5fa", "FR": "#f87171", "RL": "#2dd4bf", "RR": "#f59e0b"}
+
+
+def apply_matplotlib() -> None:
+    """One place to theme every embedded chart: shared font, sizes, dark
+    surfaces and a subtle grid, so the Analysis tabs look like one app.
+    Call after the QApplication exists so charts inherit its font."""
+    import matplotlib as mpl
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    family = app.font().family() if app else UI_FONT
+    mpl.rcParams.update(
+        {
+            "figure.facecolor": BG,
+            "axes.facecolor": SURFACE,
+            "axes.edgecolor": BORDER,
+            "axes.labelcolor": MUTED,
+            "axes.titlecolor": TEXT,
+            "axes.titlesize": 9,
+            "axes.labelsize": 8,
+            "axes.grid": False,
+            "text.color": TEXT,
+            "xtick.color": MUTED,
+            "ytick.color": MUTED,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "legend.fontsize": 7,
+            "legend.framealpha": 0.0,
+            "grid.color": BORDER,
+            "grid.alpha": 0.35,
+            "grid.linewidth": 0.6,
+            "font.size": 9,
+            "font.family": "sans-serif",
+            "font.sans-serif": [family, UI_FONT, "Arial", "DejaVu Sans"],
+            "font.monospace": MONO_FAMILIES + ["monospace"],
+        }
+    )
+
+
 DARK_QSS = f"""
-QWidget {{ background:{BG}; color:{TEXT}; font-size:13px; }}
+QWidget {{ background:{BG}; color:{TEXT}; font-size:13px;
+  font-family:"{UI_FONT}"; }}
 QLineEdit, QComboBox, QListWidget, QTableWidget, QDateEdit, QPlainTextEdit,
 QAbstractSpinBox {{
   background:{SURFACE}; border:1px solid {BORDER}; border-radius:6px;
@@ -85,4 +135,12 @@ QWidget#header {{ background:{BG_DEEP}; border-bottom:1px solid {SURFACE}; }}
 QPushButton#ghost {{ background:transparent; color:{MUTED};
   border:1px solid {BORDER}; font-weight:500; }}
 QPushButton#ghost:hover {{ background:{SURFACE}; color:{TEXT}; }}
+QPushButton#toggle {{ background:transparent; color:{TEXT_DIM};
+  border:1px solid {BORDER}; border-radius:6px; padding:6px 12px;
+  font-weight:600; }}
+QPushButton#toggle:hover {{ background:{SURFACE}; color:{TEXT}; }}
+QPushButton#toggle:checked {{ background:{ACCENT}; color:{WHITE};
+  border-color:{ACCENT}; }}
+QLabel#section {{ color:{MUTED}; font-size:11px; font-weight:700;
+  letter-spacing:1px; padding-top:4px; }}
 """

@@ -56,7 +56,7 @@ class LibraryPage(QWidget):
         root = QVBoxLayout(self)
 
         # --- device fetch ---
-        root.addWidget(QLabel("<b>Device</b>"))
+        root.addWidget(self._section("DEVICE"))
         dev = QHBoxLayout()
         dev.addWidget(QLabel("Host:"))
         self._host = QLineEdit(DEFAULT_HOST)
@@ -84,7 +84,7 @@ class LibraryPage(QWidget):
         root.addWidget(self._devlist)
 
         # --- local library ---
-        root.addWidget(QLabel("<b>Library</b>"))
+        root.addWidget(self._section("LIBRARY"))
         loc = QHBoxLayout()
         self._dir = QLineEdit(prefs.last_dir(DEFAULT_DIR))
         loc.addWidget(self._dir, 1)
@@ -120,6 +120,12 @@ class LibraryPage(QWidget):
         self._undo = None
         self._runs = {}
         self._refresh()
+
+    @staticmethod
+    def _section(text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setObjectName("section")
+        return lbl
 
     # ---- status ----
     _STATUS_COLORS = {"info": theme.MUTED, "ok": theme.IN_WINDOW, "error": theme.OUTER}
