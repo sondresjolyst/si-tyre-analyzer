@@ -2,17 +2,18 @@
 
 #if HAS_DISPLAY
 
-#define LGFX_USE_V1
-#include <Arduino.h>
-#include <LovyanGFX.hpp>
+#include "display/DisplayController.h"
 
 #include <cstdio>
 #include <cstring>
 
+#define LGFX_USE_V1
+#include <Arduino.h>
+#include <LovyanGFX.hpp>
+
 #include "config/DeviceConfig.h"
 #include "controllers/LiveDashboard.h"
 #include "display/Colormap.h"
-#include "display/DisplayController.h"
 #include "processing/Downsample.h"
 #include "storage/LogFormat.h"
 
