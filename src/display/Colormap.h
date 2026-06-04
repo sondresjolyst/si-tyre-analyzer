@@ -13,24 +13,33 @@ struct Rgb {
   uint8_t b;
 };
 
+struct HeatStop {
+  float f;
+  uint8_t r, g, b;
+};
 inline Rgb heatRgb(float t, float lo, float hi) {
+  static const HeatStop ramp[] = {{0.00f, 30, 70, 200},  {0.20f, 30, 165, 215},
+                                  {0.40f, 40, 185, 80},  {0.62f, 70, 200, 70},
+                                  {0.72f, 200, 210, 50}, {0.85f, 240, 150, 30},
+                                  {1.00f, 215, 30, 30}};
+  const int n = sizeof(ramp) / sizeof(ramp[0]);
   const float span = hi - lo;
   float f = (span <= 0.0f) ? 0.0f : (t - lo) / span;
   if (f < 0.0f)
     f = 0.0f;
   if (f > 1.0f)
     f = 1.0f;
-  const float r = 255.0f * (f * 2.0f < 1.0f ? f * 2.0f : 1.0f);
-  const float b =
-      255.0f * ((1.0f - f) * 2.0f < 1.0f ? (1.0f - f) * 2.0f : 1.0f);
-  float d = f - 0.5f;
-  if (d < 0.0f)
-    d = -d;
-  float g = 80.0f * (1.0f - d * 2.0f);
-  if (g < 0.0f)
-    g = 0.0f;
-  return Rgb{static_cast<uint8_t>(r + 0.5f), static_cast<uint8_t>(g + 0.5f),
-             static_cast<uint8_t>(b + 0.5f)};
+  for (int i = 0; i < n - 1; i++) {
+    if (f <= ramp[i + 1].f) {
+      const HeatStop &a = ramp[i];
+      const HeatStop &b = ramp[i + 1];
+      const float u = (f - a.f) / (b.f - a.f);
+      return Rgb{static_cast<uint8_t>(a.r + (b.r - a.r) * u + 0.5f),
+                 static_cast<uint8_t>(a.g + (b.g - a.g) * u + 0.5f),
+                 static_cast<uint8_t>(a.b + (b.b - a.b) * u + 0.5f)};
+    }
+  }
+  return Rgb{ramp[n - 1].r, ramp[n - 1].g, ramp[n - 1].b};
 }
 
 inline uint16_t toRgb565(Rgb c) {

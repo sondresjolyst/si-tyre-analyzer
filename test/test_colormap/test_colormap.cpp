@@ -13,21 +13,23 @@ void tearDown() {}
 
 void test_cold_end() {
   Rgb c = heatRgb(0.0f, 0.0f, 100.0f);
-  TEST_ASSERT_EQUAL_UINT8(0, c.r);
-  TEST_ASSERT_EQUAL_UINT8(255, c.b);
+  TEST_ASSERT_EQUAL_UINT8(30, c.r);
+  TEST_ASSERT_EQUAL_UINT8(70, c.g);
+  TEST_ASSERT_EQUAL_UINT8(200, c.b);
 }
 
 void test_hot_end() {
   Rgb c = heatRgb(100.0f, 0.0f, 100.0f);
-  TEST_ASSERT_EQUAL_UINT8(255, c.r);
-  TEST_ASSERT_EQUAL_UINT8(0, c.b);
+  TEST_ASSERT_EQUAL_UINT8(215, c.r);
+  TEST_ASSERT_EQUAL_UINT8(30, c.g);
+  TEST_ASSERT_EQUAL_UINT8(30, c.b);
 }
 
 void test_mid() {
   Rgb c = heatRgb(50.0f, 0.0f, 100.0f);
-  TEST_ASSERT_EQUAL_UINT8(255, c.r);
-  TEST_ASSERT_EQUAL_UINT8(255, c.b);
-  TEST_ASSERT_EQUAL_UINT8(80, c.g);
+  TEST_ASSERT_EQUAL_UINT8(54, c.r);
+  TEST_ASSERT_EQUAL_UINT8(192, c.g);
+  TEST_ASSERT_EQUAL_UINT8(75, c.b);
 }
 
 void test_clamps_below_range() {

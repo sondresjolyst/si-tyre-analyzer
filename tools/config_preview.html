@@ -1,0 +1,227 @@
+<!doctype html>
+<!-- Standalone preview of the on-device config/status hub (master view).
+     Mirrors src/web/WebSite.cpp pageRoot(). Toggle Role/Records to see the
+     show-hide behaviour; the paired badge is faked for the preview. -->
+<html>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>SI Tyre Analyzer — Setup (preview)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#111827;--bgd:#0b1220;--surface:#1f2937;--border:#374151;
+--txt:#f3f4f6;--dim:#cbd5e1;--muted:#9ca3af;--muted2:#6b7280;
+--acc:#2563eb;--acch:#1d4ed8;--blu:#60a5fa;--grn:#22c55e;--red:#f87171}
+body{font-family:"Segoe UI",-apple-system,Roboto,system-ui,sans-serif;
+color:var(--txt);min-height:100vh;padding:18px 14px 44px;background:var(--bg);
+background-image:radial-gradient(130% 90% at 50% -12%,rgba(37,99,235,.10),
+transparent 55%);background-attachment:fixed}
+.wrap{max-width:580px;margin:0 auto}
+.logo{display:flex;justify-content:center;margin:2px 0 16px}
+.logo svg{width:230px;max-width:68%;height:auto}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.badge{display:inline-flex;align-items:center;gap:6px;
+font:600 11px/1 Consolas,'Cascadia Mono',monospace;letter-spacing:.09em;
+text-transform:uppercase;padding:7px 10px;border-radius:7px;
+background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.badge b{color:var(--txt);letter-spacing:.03em}
+.badge.role{background:var(--acc);color:#fff;border-color:var(--acc)}
+.badge.car{border-color:var(--blu)}.badge.car b{font-size:14px;color:var(--blu)}
+.sec{font:700 11px/1 Consolas,'Cascadia Mono',monospace;letter-spacing:.14em;
+text-transform:uppercase;color:var(--muted);margin:24px 2px 9px;
+display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;
+background:linear-gradient(90deg,var(--border),transparent)}
+.card{background:var(--surface);border:1px solid var(--border);
+border-radius:14px;padding:16px}
+.card+.card{margin-top:12px}
+.lbl{display:block;font-size:12px;color:var(--muted);margin:15px 0 7px;
+text-transform:uppercase;letter-spacing:.07em}.lbl:first-child{margin-top:0}
+.hint{color:var(--muted2);font-size:11px;margin-top:9px;line-height:1.45}
+input[type=text],input[type=number]{width:100%;padding:11px 12px;
+border-radius:9px;border:1px solid var(--border);background:var(--bgd);
+color:var(--txt);font-size:15px;font-family:inherit}
+input[type=text]:focus,input[type=number]:focus{outline:0;border-color:var(--acc)}
+input[type=file]{width:100%;font-size:13px;color:var(--muted);padding:11px;
+border:1px dashed var(--border);border-radius:9px;background:var(--bgd)}
+.btn{display:block;width:100%;text-align:center;padding:13px;
+border-radius:10px;font:700 14px/1.2 inherit;letter-spacing:.05em;
+text-transform:uppercase;cursor:pointer;text-decoration:none;
+background:transparent;color:var(--txt);border:1px solid var(--border)}
+.btn:hover{background:var(--surface)}
+.btn+.btn{margin-top:10px}
+.btn.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.primary:hover{background:var(--acch)}
+.btn.lg{padding:18px;font-size:16px;letter-spacing:.08em}
+.seg{display:flex;border:1px solid var(--border);border-radius:10px;
+overflow:hidden;background:var(--bgd)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{flex:1;text-align:center;padding:12px 6px;font-size:13px;
+font-weight:600;color:var(--muted);cursor:pointer;
+border-right:1px solid var(--border);transition:background .12s}
+.seg label:last-of-type{border-right:0}
+.seg input:checked+label{background:var(--acc);color:#fff}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;
+max-width:230px;margin:2px auto 0}
+.wgrid input{position:absolute;opacity:0;pointer-events:none}
+.wgrid label{display:block;text-align:center;padding:17px 0;border-radius:10px;
+border:1px solid var(--border);background:var(--bgd);color:var(--muted);
+font:700 14px/1 Consolas,'Cascadia Mono',monospace;letter-spacing:.12em;
+cursor:pointer}
+.wgrid input:checked+label{background:var(--acc);color:#fff;border-color:var(--acc)}
+.kv{display:flex;justify-content:space-between;font-size:13px;
+color:var(--muted);margin-bottom:9px}
+.kv b{color:var(--txt);font-family:Consolas,'Cascadia Mono',monospace}
+.gauge{background:var(--bgd);border:1px solid var(--border);border-radius:6px;
+height:12px;overflow:hidden}
+.gauge>div{height:100%;background:linear-gradient(90deg,var(--grn),var(--acc))}
+details{margin-top:12px}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+.discl{display:flex;align-items:center;justify-content:space-between;
+background:var(--surface);border:1px solid var(--border);border-radius:12px;
+padding:15px 16px;font:700 12px/1 Consolas,'Cascadia Mono',monospace;
+letter-spacing:.12em;text-transform:uppercase}
+.discl .chev{color:var(--blu);transition:transform .15s;font-size:14px}
+details[open] .discl .chev{transform:rotate(90deg)}
+details[open] .discl{border-radius:12px 12px 0 0;border-bottom:0}
+details>.card{border-radius:0 0 12px 12px;border-top:0}
+a{color:var(--blu)}.muted{color:var(--muted);font-size:13px}
+.sub{color:var(--muted2);font-size:12px;margin-top:7px}
+.paired{color:var(--grn);font-weight:600}
+</style>
+</head>
+<body><div class='wrap'>
+<div class='logo'>
+<svg width="432" height="150" viewBox="0 0 432 150" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f3f4f6"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(75 75)">
+    <circle r="62" fill="#0b1220"/>
+    <circle r="55" fill="none" stroke="#1f2937" stroke-width="13"/>
+    <circle r="62" fill="none" stroke="#374151" stroke-width="2"/>
+    <circle r="40" fill="#111827" stroke="#94a3b8" stroke-width="3"/>
+    <g stroke="#cbd5e1" stroke-width="8" stroke-linecap="round">
+      <line x1="0" y1="-11" x2="0" y2="-37"/>
+      <line x1="0" y1="-11" x2="0" y2="-37" transform="rotate(72)"/>
+      <line x1="0" y1="-11" x2="0" y2="-37" transform="rotate(144)"/>
+      <line x1="0" y1="-11" x2="0" y2="-37" transform="rotate(216)"/>
+      <line x1="0" y1="-11" x2="0" y2="-37" transform="rotate(288)"/>
+    </g>
+    <circle r="11" fill="#cbd5e1"/>
+    <circle r="4" fill="#0b1220"/>
+  </g>
+  <g transform="translate(160 0)">
+    <g transform="skewX(-10)">
+      <rect x="0" y="46" width="46" height="9" rx="2" fill="#475569"/>
+      <rect x="0" y="62" width="34" height="6" rx="2" fill="#475569"/>
+      <rect x="0" y="74" width="22" height="5" rx="2" fill="#475569"/>
+    </g>
+    <text x="0" y="58" font-family="Segoe UI, Arial, sans-serif"
+          font-size="40" font-weight="800" font-style="italic"
+          fill="url(#word)" letter-spacing="1">SI TYRE</text>
+    <text x="2" y="98" font-family="Segoe UI, Arial, sans-serif"
+          font-size="34" font-weight="800" font-style="italic"
+          fill="#2563eb" letter-spacing="6">ANALYZER</text>
+    <text x="3" y="124" font-family="Segoe UI, Arial, sans-serif"
+          font-size="15" font-weight="600" fill="#94a3b8"
+          letter-spacing="5">SJ&#216;LYST INNOVATIONS</text>
+  </g>
+</svg>
+</div>
+
+<div class='bar'>
+<span class='badge role'>Dash master</span>
+<span class='badge car'>Car <b>4821</b></span>
+<span class='badge' id='barPaired'><b>0</b> paired</span>
+<span class='badge'>v0.4.0</span></div>
+
+<a class='btn primary lg' href='#'>Open live dashboard</a>
+<a class='btn' href='#'>View recorded sessions</a>
+
+<div class='sec'>Pairing</div><div class='card'>
+<button class='btn' type='button'>Pair wheels (60s)</button>
+<p class='sub' id='paired'>Loading…</p>
+<p class='hint'>Tap Pair here, then hold the button (~3s) on each wheel unit until its LED confirms.</p>
+</div>
+
+<div class='sec'>Car ID</div><div class='card'>
+<div class='kv'><span>Current</span><b>4821</b></div>
+<button class='btn' type='button'>Generate new Car ID</button>
+<p class='hint'>Enter this number on each wheel unit.</p>
+</div>
+
+<details><summary><div class='discl'>Setup<span class='chev'>▸</span></div></summary>
+<div class='card'>
+<label class='lbl'>Car name</label>
+<input type='text' maxlength='23' value='Volvo 242 Turbo'>
+
+<label class='lbl'>Role</label><div class='seg'>
+<input type='radio' name='role' id='rl_m' value='master' checked onchange='syncRole()'><label for='rl_m'>Dash master</label>
+<input type='radio' name='role' id='rl_s' value='slave' onchange='syncRole()'><label for='rl_s'>Wheel unit</label>
+</div>
+
+<label class='lbl'>Records a wheel?</label><div class='seg'>
+<input type='radio' name='has_sensor' id='hs_1' value='1' onchange='syncWheel()'><label for='hs_1'>Yes</label>
+<input type='radio' name='has_sensor' id='hs_0' value='0' checked onchange='syncWheel()'><label for='hs_0'>No</label>
+</div>
+
+<div id='displayRow'><label class='lbl'>Dash display fitted?</label><div class='seg'>
+<input type='radio' name='has_display' id='hd_0' value='0' checked><label for='hd_0'>No</label>
+<input type='radio' name='has_display' id='hd_1' value='1'><label for='hd_1'>Yes</label>
+</div></div>
+
+<div id='wheelRow'><label class='lbl'>Wheel position</label><div class='wgrid'>
+<input type='radio' name='wheel' id='wl_fl' value='FL' checked><label for='wl_fl'>FL</label>
+<input type='radio' name='wheel' id='wl_fr' value='FR'><label for='wl_fr'>FR</label>
+<input type='radio' name='wheel' id='wl_rl' value='RL'><label for='wl_rl'>RL</label>
+<input type='radio' name='wheel' id='wl_rr' value='RR'><label for='wl_rr'>RR</label>
+</div></div>
+
+<div id='flipRow'>
+<label class='lbl'>Mirror inner/outer (across tread)</label><div class='seg'>
+<input type='radio' name='flip_x' id='fx_0' value='0' checked><label for='fx_0'>No</label>
+<input type='radio' name='flip_x' id='fx_1' value='1'><label for='fx_1'>Yes</label>
+</div><label class='lbl'>Mirror direction of travel</label><div class='seg'>
+<input type='radio' name='flip_y' id='fy_0' value='0' checked><label for='fy_0'>No</label>
+<input type='radio' name='flip_y' id='fy_1' value='1'><label for='fy_1'>Yes</label>
+</div></div>
+
+<label class='lbl'>ESP-NOW / AP channel</label><div class='seg'>
+<input type='radio' name='channel' id='ch_1' value='1' checked><label for='ch_1'>1</label>
+<input type='radio' name='channel' id='ch_6' value='6'><label for='ch_6'>6</label>
+<input type='radio' name='channel' id='ch_11' value='11'><label for='ch_11'>11</label>
+</div>
+
+<button class='btn primary' type='button' style='margin-top:16px'>Save setup</button>
+</div></details>
+
+<details><summary><div class='discl'>Storage &amp; firmware<span class='chev'>▸</span></div></summary>
+<div class='card'>
+<div class='kv'><span>Storage used</span><b>412 / 2900 KB (14%)</b></div>
+<div class='gauge'><div style='width:14%'></div></div>
+<p class='hint'>Oldest sessions are deleted automatically when space runs low.</p>
+<label class='lbl'>Firmware update</label>
+<input type='file' accept='.bin'>
+<button class='btn primary' type='button' style='margin-top:10px'>Upload &amp; flash this device</button>
+<button class='btn' type='button'>Upload &amp; flash all wheels</button>
+<p class='hint'>Wheel build flashes every paired wheel at once.</p>
+</div></details>
+
+<script>
+function syncRole(){document.getElementById('displayRow').style.display=
+  document.getElementById('rl_m').checked?'':'none';}
+function syncWheel(){var y=document.getElementById('hs_1').checked;var d=y?'':'none';
+  document.getElementById('wheelRow').style.display=d;
+  document.getElementById('flipRow').style.display=d;}
+syncRole(); syncWheel();
+setTimeout(function(){
+  document.getElementById('barPaired').innerHTML='<b>3</b> paired';
+  document.getElementById('paired').textContent='Paired: FL v0.4.0 ●, FR v0.4.0 ●, RL v0.4.0 ○';
+},600);
+</script>
+</div></body></html>

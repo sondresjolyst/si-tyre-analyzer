@@ -33,6 +33,18 @@
 #ifndef DEVICE_ROLE
 #define DEVICE_ROLE "master"
 #endif
+#ifndef PAIR_HOLD_MS
+#define PAIR_HOLD_MS 3000
+#endif
+#ifndef AP_HOLD_MS
+#define AP_HOLD_MS 8000
+#endif
+#ifndef TEMP_LO_C
+#define TEMP_LO_C 60
+#endif
+#ifndef TEMP_HI_C
+#define TEMP_HI_C 110
+#endif
 
 namespace tyre {
 
@@ -40,6 +52,10 @@ constexpr int kGridCols = GRID_COLS;
 constexpr int kGridRows = GRID_ROWS;
 constexpr int kGridCells = kGridCols * kGridRows;
 constexpr int kMaxPeers = 4;
+constexpr uint32_t kPairHoldMs = PAIR_HOLD_MS;
+constexpr uint32_t kApHoldMs = AP_HOLD_MS;
+constexpr int kTempLoC = TEMP_LO_C;
+constexpr int kTempHiC = TEMP_HI_C;
 
 enum WheelPos : uint8_t {
   WHEEL_FL = 0,
