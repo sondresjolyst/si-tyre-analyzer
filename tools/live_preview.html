@@ -1,61 +1,94 @@
 <!doctype html>
 <!-- Standalone preview of the on-device /live dashboard with synthetic data.
-     Per-column average shown inside the middle row of each heatmap. -->
+     Mirrors src/web/WebSite.cpp pageLive(). Fixed 20-120 deg colour scale. -->
 <html>
 <head>
 <meta charset='utf-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>SI Tyre Analyzer — Live (preview)</title>
 <style>
-body{background:#111827;color:#f3f4f6;font-family:-apple-system,'Segoe UI',sans-serif;margin:0;padding:12px}
-.wrap{max-width:560px;margin:0 auto}
-h1{font-size:16px;margin:0 0 2px}
-.muted{color:#6b7280;font-size:12px;margin-bottom:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.tyre{background:#1f2937;border-radius:10px;padding:8px}
-.tyre h2{font-size:13px;margin:0 0 6px;text-align:center}
-.heat{display:grid;gap:0;border-radius:6px;overflow:hidden}
-.cell{aspect-ratio:0.55;display:flex;align-items:center;justify-content:center;
-font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#111827;--bgd:#0b1220;--surface:#1f2937;--border:#374151;
+--txt:#f3f4f6;--dim:#cbd5e1;--muted:#9ca3af;--muted2:#6b7280;
+--acc:#2563eb;--acch:#1d4ed8;--blu:#60a5fa;--grn:#22c55e;--red:#f87171}
+body{font-family:"Segoe UI",-apple-system,Roboto,system-ui,sans-serif;
+color:var(--txt);min-height:100vh;padding:18px 14px 44px;background:var(--bg);
+background-image:radial-gradient(130% 90% at 50% -12%,rgba(37,99,235,.10),
+transparent 55%);background-attachment:fixed}
+.wrap{max-width:580px;margin:0 auto}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.badge{display:inline-flex;align-items:center;gap:6px;
+font:600 11px/1 Consolas,'Cascadia Mono',monospace;letter-spacing:.09em;
+text-transform:uppercase;padding:7px 10px;border-radius:7px;
+background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted2)}
+.dot.on{background:var(--grn)}
+.btn{display:block;width:100%;text-align:center;padding:13px;
+border-radius:10px;font:700 14px/1.2 inherit;letter-spacing:.05em;
+text-transform:uppercase;cursor:pointer;text-decoration:none;
+background:transparent;color:var(--txt);border:1px solid var(--border)}
+.btn:hover{background:var(--surface)}
+.lgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tyre{background:var(--surface);border:1px solid var(--border);
+border-radius:12px;padding:10px}
+.tyre .th{display:flex;align-items:center;justify-content:space-between;
+font:700 13px/1 Consolas,'Cascadia Mono',monospace;letter-spacing:.1em;
+margin-bottom:8px}
+.heat{display:grid;gap:0;border-radius:8px;overflow:hidden;
+aspect-ratio:.78;width:78%;margin:0 auto;border:1px solid var(--bgd)}
+.cell{display:flex;align-items:center;justify-content:center;
+font:700 11px/1 Consolas,'Cascadia Mono',monospace;color:#fff;
+text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.stat{font:600 11px/1 Consolas,'Cascadia Mono',monospace;color:var(--muted);
+text-align:center;margin-top:8px;letter-spacing:.02em}
+.legend{margin:16px auto 0;max-width:320px}
+.legbar{height:12px;border-radius:6px;border:1px solid var(--border);
+background:linear-gradient(90deg,rgb(30,70,200) 0%,rgb(30,165,215) 20%,
+rgb(40,185,80) 40%,rgb(70,200,70) 62%,rgb(200,210,50) 72%,
+rgb(240,150,30) 85%,rgb(215,30,30) 100%)}
+.leglbl{display:flex;justify-content:space-between;
+font:600 11px/1 Consolas,'Cascadia Mono',monospace;color:var(--muted);
+margin-top:5px}
 </style>
 </head>
 <body><div class='wrap'>
-<h1>Live tyre temperatures</h1>
-<div class='muted'>Preview with synthetic data &middot; grid 9&times;5 &middot; &deg;C (middle row)</div>
-<div class='grid'>
-<div class='tyre'><h2>FL</h2><div class='heat' id='FL'></div></div>
-<div class='tyre'><h2>FR</h2><div class='heat' id='FR'></div></div>
-<div class='tyre'><h2>RL</h2><div class='heat' id='RL'></div></div>
-<div class='tyre'><h2>RR</h2><div class='heat' id='RR'></div></div>
+<div class='lgrid'>
+<div class='tyre'><div class='th'><span>FL</span><span class='dot' id='dFL'></span></div><div class='heat' id='FL'></div><div class='stat' id='sFL'>—</div></div>
+<div class='tyre'><div class='th'><span>FR</span><span class='dot' id='dFR'></span></div><div class='heat' id='FR'></div><div class='stat' id='sFR'>—</div></div>
+<div class='tyre'><div class='th'><span>RL</span><span class='dot' id='dRL'></span></div><div class='heat' id='RL'></div><div class='stat' id='sRL'>—</div></div>
+<div class='tyre'><div class='th'><span>RR</span><span class='dot' id='dRR'></span></div><div class='heat' id='RR'></div><div class='stat' id='sRR'>—</div></div>
 </div>
-<div class='muted' id='clock' style='margin-top:10px'></div>
+<div class='legend'><div class='legbar'></div>
+<div class='leglbl'><span>60&deg;</span><span>85&deg;</span><span>110&deg;</span></div></div>
+<a class='btn' href='#' style='margin-top:18px'>&larr; Back</a>
 
 <script>
-const COLS=9, ROWS=5, MID=Math.floor(ROWS/2);
-function color(t,min,max){
-  let f=(t-min)/Math.max(1,max-min); f=Math.max(0,Math.min(1,f));
-  let r=Math.round(255*Math.min(1,f*2));
-  let b=Math.round(255*Math.min(1,(1-f)*2));
-  let g=Math.round(80*(1-Math.abs(f-0.5)*2));
-  return `rgb(${r},${g},${b})`;
+const COLS=9, ROWS=5, MID=Math.floor(ROWS/2), LO=60, HI=110;
+// blue->green->yellow->red ramp, shared with colors.py / Colormap.h / pageLive
+const RAMP=[[0,30,70,200],[.2,30,165,215],[.4,40,185,80],
+            [.62,70,200,70],[.72,200,210,50],[.85,240,150,30],[1,215,30,30]];
+function color(t){
+  let f=(t-LO)/(HI-LO); f=Math.max(0,Math.min(1,f));
+  let i=0; while(i<RAMP.length-2 && f>RAMP[i+1][0]) i++;
+  const a=RAMP[i], b=RAMP[i+1], u=(f-a[0])/(b[0]-a[0]);
+  return `rgb(${Math.round(a[1]+(b[1]-a[1])*u)},${Math.round(a[2]+(b[2]-a[2])*u)},${Math.round(a[3]+(b[3]-a[3])*u)})`;
 }
-const wheels=['FL','FR','RL','RR'];
-wheels.forEach(id=>{
+['FL','FR','RL','RR'].forEach(id=>{
   const el=document.getElementById(id);
   el.style.gridTemplateColumns='repeat('+COLS+',1fr)';
   for(let i=0;i<COLS*ROWS;i++){const d=document.createElement('div');d.className='cell';el.appendChild(d);}
 });
 function draw(id,temps){
   const cells=document.getElementById(id).children;
-  let mn=Math.min(...temps), mx=Math.max(...temps);
   for(let i=0;i<temps.length;i++){
-    cells[i].style.background=color(temps[i],mn,mx);
-    cells[i].textContent='';
+    cells[i].style.background=color(temps[i]);
+    cells[i].textContent=(Math.floor(i/COLS)==MID)?Math.round(temps[i]):'';
   }
-  // Show each middle-row block's actual temperature.
-  for(let c=0;c<COLS;c++){
-    cells[MID*COLS+c].textContent=Math.round(temps[MID*COLS+c]);
-  }
+  let mn=Math.min(...temps),mx=Math.max(...temps);
+  let av=temps.reduce((a,b)=>a+b,0)/temps.length;
+  document.getElementById('s'+id).textContent=
+    'min '+Math.round(mn)+'°  avg '+Math.round(av)+'°  max '+Math.round(mx)+'°';
+  document.getElementById('d'+id).className='dot on';
 }
 function frame(t,seed){
   const ambient=55, peak=85+seed*4;
@@ -75,7 +108,6 @@ function tick(){
   const t=(Date.now()-t0)/1000;
   draw('FL',frame(t,0)); draw('FR',frame(t,0.4));
   draw('RL',frame(t,0.8)); draw('RR',frame(t,1.2));
-  document.getElementById('clock').textContent='t = '+t.toFixed(1)+' s';
 }
 setInterval(tick,500); tick();
 </script>

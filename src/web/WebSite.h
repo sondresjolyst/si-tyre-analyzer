@@ -19,6 +19,9 @@ String pageRoot(const DeviceConfig &cfg);
 // Dedicated sessions list page (grouped by run).
 String pageSessions(const std::vector<SessionInfo> &sessions);
 
+// Live 2x2 tyre dashboard (master SoftAP; polls /api/live).
+String pageLive();
+
 }  // namespace tyre
 
 #endif  // SRC_WEB_WEBSITE_H_

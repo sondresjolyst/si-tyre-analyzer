@@ -9,5 +9,5 @@ WHEELS = ["FL", "FR", "RL", "RR"]
 # instead of tracking whatever the current hottest pixel happens to be (which is
 # misleading while driving). Bounds cover a cold/pit tyre (~ambient) up through
 # an overheating one; racing slick surface temps run ~60–110°C in their window.
-TEMP_SCALE_LO = 20.0
-TEMP_SCALE_HI = 120.0
+TEMP_SCALE_LO = 60.0
+TEMP_SCALE_HI = 110.0

@@ -6,6 +6,9 @@
 #include <Arduino.h>
 #include <LovyanGFX.hpp>
 
+#include <cstdio>
+#include <cstring>
+
 #include "config/DeviceConfig.h"
 #include "controllers/LiveDashboard.h"
 #include "display/Colormap.h"
@@ -70,7 +73,14 @@ LGFX gfx;
 constexpr int kCols = tyre::kGridCols;
 constexpr int kRows = tyre::kGridRows;
 constexpr float kScale = static_cast<float>(tyre::kTempScale);
-const char *kLabels[4] = {"FL", "FR", "RL", "RR"};
+
+constexpr int kCellW = 160, kCellH = 120;
+
+const uint16_t kBg = tyre::toRgb565(tyre::Rgb{0x11, 0x18, 0x27});
+const uint16_t kTile = tyre::toRgb565(tyre::Rgb{0x1f, 0x29, 0x37});
+const uint16_t kMuted = tyre::toRgb565(tyre::Rgb{0x9c, 0xa3, 0xaf});
+const uint16_t kGrn = tyre::toRgb565(tyre::Rgb{0x22, 0xc5, 0x5e});
+const uint16_t kTxt = tyre::toRgb565(tyre::Rgb{0xf3, 0xf4, 0xf6});
 
 }  // namespace
 
@@ -80,7 +90,7 @@ bool DisplayController::begin() {
   if (!gfx.init())
     return false;
   gfx.setRotation(1);
-  gfx.fillScreen(TFT_BLACK);
+  gfx.fillScreen(kBg);
   ready_ = true;
   return true;
 }
@@ -102,63 +112,69 @@ void DisplayController::render(const LiveDashboard &dash) {
   for (int slot = 0; slot < 4; slot++) {
     LiveDashboard::WheelLive w;
     bool valid = dash.snapshot(slot, &w);
-    drawCell(slot, kLabels[slot], w.temps, valid);
+    drawCell(slot, w.temps, valid);
   }
 }
 
-void DisplayController::drawCell(int slot, const char *label,
-                                 const int16_t *temps, bool valid) {
-  const int cellW = 160, cellH = 120;
-  const int x = (slot % 2) * cellW;
-  const int y = (slot / 2) * cellH;
+void DisplayController::drawCell(int slot, const int16_t *temps, bool valid) {
+  const int x = (slot % 2) * kCellW;
+  const int y = (slot / 2) * kCellH;
+  const int m = 2;
+  const int tx = x + m, ty = y + m, tw = kCellW - 2 * m, th = kCellH - 2 * m;
 
-  gfx.fillRect(x, y, cellW, cellH, TFT_BLACK);
-  gfx.setTextColor(TFT_WHITE, TFT_BLACK);
-  gfx.setTextSize(2);
-  gfx.setCursor(x + 6, y + 4);
-  gfx.print(label);
+  gfx.fillRect(x, y, kCellW, kCellH, kBg);
+  gfx.fillRoundRect(tx, ty, tw, th, 6, kTile);
+
+  gfx.fillCircle(tx + tw - 9, ty + 8, 4, valid ? kGrn : kMuted);
 
   if (!valid) {
-    gfx.setTextColor(0x7BEF, TFT_BLACK);
-    gfx.setCursor(x + 60, y + 50);
+    gfx.setTextColor(kMuted, kTile);
+    gfx.setTextSize(2);
+    gfx.setCursor(tx + tw / 2 - 12, ty + th / 2 - 8);
     gfx.print("--");
     return;
   }
 
-  float lo = 1e9f, hi = -1e9f;
-  for (int i = 0; i < kCols * kRows; i++) {
-    float t = temps[i] / kScale;
-    if (t < lo)
-      lo = t;
-    if (t > hi)
-      hi = t;
-  }
-
-  const int mapX = x + 6, mapY = y + 24, mapW = 148, mapH = 64;
-  const int pw = mapW / kCols, ph = mapH / kRows;
+  const int mapX = tx + 4, mapY = ty + 14, mapW = tw - 8, mapH = th - 20;
+  const float lo = static_cast<float>(kTempLoC);
+  const float hi = static_cast<float>(kTempHiC);
   for (int r = 0; r < kRows; r++) {
+    const int y0 = mapY + r * mapH / kRows, y1 = mapY + (r + 1) * mapH / kRows;
     for (int c = 0; c < kCols; c++) {
+      const int x0 = mapX + c * mapW / kCols,
+                x1 = mapX + (c + 1) * mapW / kCols;
       float t = temps[r * kCols + c] / kScale;
-      gfx.fillRect(mapX + c * pw, mapY + r * ph, pw, ph, heatRgb565(t, lo, hi));
+      gfx.fillRect(x0, y0, x1 - x0, y1 - y0, heatRgb565(t, lo, hi));
     }
   }
 
-  const int mid = kRows / 2;
-  auto zoneAvg = [&](int c0, int c1) {
-    float s = 0;
-    for (int c = c0; c < c1; c++)
-      s += temps[mid * kCols + c] / kScale;
-    return s / (c1 - c0);
-  };
   const int third = kCols / 3;
-  int inner = static_cast<int>(zoneAvg(0, third) + 0.5f);
-  int middle = static_cast<int>(zoneAvg(third, 2 * third) + 0.5f);
-  int outer = static_cast<int>(zoneAvg(2 * third, kCols) + 0.5f);
-
-  gfx.setTextSize(1);
-  gfx.setTextColor(TFT_WHITE, TFT_BLACK);
-  gfx.setCursor(x + 6, y + 96);
-  gfx.printf("I%d  M%d  O%d C", inner, middle, outer);
+  auto zoneAvg = [&](int c0, int c1) {
+    float s = 0.0f;
+    for (int r = 0; r < kRows; r++)
+      for (int c = c0; c < c1; c++)
+        s += temps[r * kCols + c] / kScale;
+    return s / ((c1 - c0) * kRows);
+  };
+  const int zone[3] = {static_cast<int>(zoneAvg(0, third) + 0.5f),
+                       static_cast<int>(zoneAvg(third, 2 * third) + 0.5f),
+                       static_cast<int>(zoneAvg(2 * third, kCols) + 0.5f)};
+  const int cy = mapY + mapH / 2;
+  const float zs = 2.3f;
+  const int gw = static_cast<int>(6 * zs + 0.5f);
+  const int gh = static_cast<int>(8 * zs + 0.5f);
+  gfx.setTextSize(zs);
+  for (int z = 0; z < 3; z++) {
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%d", zone[z]);
+    const int chipW = gw * static_cast<int>(strlen(buf)) + 6, chipH = gh + 4;
+    const int cx = mapX + mapW * (2 * z + 1) / 6;
+    const int bx = cx - chipW / 2, by = cy - chipH / 2;
+    gfx.fillRoundRect(bx, by, chipW, chipH, 3, kBg);
+    gfx.setTextColor(kTxt, kBg);
+    gfx.setCursor(bx + 3, by + 2);
+    gfx.print(buf);
+  }
 }
 
 }  // namespace tyre

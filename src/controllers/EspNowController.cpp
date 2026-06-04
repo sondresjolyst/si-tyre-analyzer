@@ -29,6 +29,14 @@ static const uint32_t kPairTimeoutMs = 60000;
 // pairing at the same time is too weak to match.
 static const int kPairRssiMin = -55;
 
+static uint32_t macCarId() {
+  uint8_t mac[6] = {0};
+  esp_wifi_get_mac(WIFI_IF_AP, mac);
+  uint32_t h = (static_cast<uint32_t>(mac[3]) << 16) |
+               (static_cast<uint32_t>(mac[4]) << 8) | mac[5];
+  return 1000 + (h % 9000);
+}
+
 bool EspNowController::begin(DeviceConfig *cfg) {
   cfg_ = cfg;
   self_ = this;
@@ -36,7 +44,7 @@ bool EspNowController::begin(DeviceConfig *cfg) {
   if (cfg_->role == ROLE_MASTER) {
     ifidx_ = WIFI_IF_AP;  // SoftAP brought up by caller on cfg_->channel
     if (cfg_->group_id == 0) {
-      cfg_->group_id = 1000 + (esp_random() % 9000);  // 4-digit Car ID
+      cfg_->group_id = macCarId();
       saveConfig(*cfg_);
     }
   } else {
@@ -49,7 +57,8 @@ bool EspNowController::begin(DeviceConfig *cfg) {
   }
   esp_now_register_recv_cb(recvThunk);
 
-  if (cfg_->role == ROLE_MASTER) addPeer(kBroadcast);
+  if (cfg_->role == ROLE_MASTER)
+    addPeer(kBroadcast);
   addStoredPeers();
 
   // Restore last-known peer firmware versions (shown in the web list).
@@ -68,7 +77,8 @@ bool EspNowController::begin(DeviceConfig *cfg) {
 }
 
 void EspNowController::addPeer(const uint8_t mac[6]) {
-  if (esp_now_is_peer_exist(mac)) return;
+  if (esp_now_is_peer_exist(mac))
+    return;
   esp_now_peer_info_t peer = {};
   memcpy(peer.peer_addr, mac, 6);
   peer.channel = 0;  // use current channel
@@ -80,7 +90,8 @@ void EspNowController::addPeer(const uint8_t mac[6]) {
 void EspNowController::addStoredPeers() {
   if (cfg_->role == ROLE_MASTER) {
     for (int i = 0; i < kMaxPeers; i++) {
-      if (cfg_->peers[i].in_use) addPeer(cfg_->peers[i].mac);
+      if (cfg_->peers[i].in_use)
+        addPeer(cfg_->peers[i].mac);
     }
   } else if (cfg_->has_master) {
     addPeer(cfg_->master_mac);
@@ -101,7 +112,7 @@ bool EspNowController::accept(const MsgHeader *h) const {
 
 void EspNowController::enterPairing() {
   if (cfg_->role == ROLE_MASTER && cfg_->group_id == 0) {
-    cfg_->group_id = 1000 + (esp_random() % 9000);  // 4-digit Car ID
+    cfg_->group_id = macCarId();
     saveConfig(*cfg_);
   }
   pairing_ = true;
@@ -111,7 +122,8 @@ void EspNowController::enterPairing() {
 }
 
 void EspNowController::update() {
-  if (!cfg_) return;  // begin() not called (e.g. AP/config-only boot)
+  if (!cfg_)
+    return;  // begin() not called (e.g. AP/config-only boot)
   const uint32_t now = millis();
 
   // Slave heartbeat: keep the master's version list fresh + show liveness,
@@ -122,12 +134,15 @@ void EspNowController::update() {
     HeartbeatMsg hb = {};
     fillHeader(&hb.h, MSG_HEARTBEAT);
     strncpy(hb.fw, VERSION, sizeof(hb.fw) - 1);
-    esp_now_send(cfg_->master_mac, reinterpret_cast<uint8_t *>(&hb), sizeof(hb));
+    esp_now_send(cfg_->master_mac, reinterpret_cast<uint8_t *>(&hb),
+                 sizeof(hb));
   }
 
-  if (!pairing_) return;
+  if (!pairing_)
+    return;
 
-  if (cfg_->role == ROLE_MASTER && now - lastAnnounceMs_ >= kAnnounceIntervalMs) {
+  if (cfg_->role == ROLE_MASTER &&
+      now - lastAnnounceMs_ >= kAnnounceIntervalMs) {
     lastAnnounceMs_ = now;
     AnnounceMsg m = {};
     fillHeader(&m.h, MSG_ANNOUNCE);
@@ -151,7 +166,8 @@ bool EspNowController::peerOnline(int i) const {
 
 void EspNowController::sendToAllPeers(const uint8_t *buf, size_t len) {
   for (int i = 0; i < kMaxPeers; i++)
-    if (cfg_->peers[i].in_use) esp_now_send(cfg_->peers[i].mac, buf, len);
+    if (cfg_->peers[i].in_use)
+      esp_now_send(cfg_->peers[i].mac, buf, len);
 }
 
 void EspNowController::savePeerFw() {
@@ -189,7 +205,8 @@ void EspNowController::sendStop(uint32_t sessionId) {
 
 void EspNowController::sendLiveGrid(uint32_t sessionId, uint32_t tOffsetMs,
                                     const int16_t *temps) {
-  if (!cfg_->has_master) return;
+  if (!cfg_->has_master)
+    return;
   LiveGridMsg m = {};
   fillHeader(&m.h, MSG_LIVE_GRID);
   m.session_id = sessionId;
@@ -201,122 +218,142 @@ void EspNowController::sendLiveGrid(uint32_t sessionId, uint32_t tOffsetMs,
 void EspNowController::recvThunk(const esp_now_recv_info_t *info,
                                  const uint8_t *data, int len) {
   int rssi = info->rx_ctrl ? info->rx_ctrl->rssi : 0;
-  if (self_) self_->onRecv(info->src_addr, data, len, rssi);
+  if (self_)
+    self_->onRecv(info->src_addr, data, len, rssi);
 }
 
 void EspNowController::onRecv(const uint8_t *srcMac, const uint8_t *data,
                               int len, int rssi) {
-  if (len < static_cast<int>(sizeof(MsgHeader))) return;
+  if (len < static_cast<int>(sizeof(MsgHeader)))
+    return;
   const MsgHeader *h = reinterpret_cast<const MsgHeader *>(data);
 
   switch (h->type) {
-    case MSG_ANNOUNCE: {
-      if (cfg_->role != ROLE_SLAVE || !pairing_) return;
-      if (len < static_cast<int>(sizeof(AnnounceMsg))) return;
-      const AnnounceMsg *m = reinterpret_cast<const AnnounceMsg *>(data);
-      if (cfg_->group_id != 0) {
-        // Car ID set: only pair with a master sharing the same Car ID.
-        if (h->group_id != cfg_->group_id) return;
-      } else {
-        // No Car ID: fall back to proximity — adopt the nearest master.
-        if (rssi < kPairRssiMin) return;
-        cfg_->group_id = h->group_id;
-      }
-      memcpy(cfg_->master_mac, m->master_mac, 6);
-      cfg_->channel = m->channel;
-      cfg_->has_master = 1;
-      strncpy(cfg_->master_ssid, m->ssid, sizeof(cfg_->master_ssid) - 1);
-      cfg_->master_ssid[sizeof(cfg_->master_ssid) - 1] = 0;
-      strncpy(cfg_->car_name, m->car_name, sizeof(cfg_->car_name) - 1);
-      cfg_->car_name[sizeof(cfg_->car_name) - 1] = 0;
-      saveConfig(*cfg_);
-      addPeer(cfg_->master_mac);
-
-      HelloMsg reply = {};
-      fillHeader(&reply.h, MSG_HELLO);
-      WiFi.macAddress(reply.mac);
-      strncpy(reply.fw, VERSION, sizeof(reply.fw) - 1);
-      esp_now_send(cfg_->master_mac, reinterpret_cast<uint8_t *>(&reply),
-                   sizeof(reply));
-      pairing_ = false;
-      printHelper.log("INFO", "paired to master, group=0x%06X", cfg_->group_id);
-      break;
+  case MSG_ANNOUNCE: {
+    if (cfg_->role != ROLE_SLAVE || !pairing_)
+      return;
+    if (len < static_cast<int>(sizeof(AnnounceMsg)))
+      return;
+    const AnnounceMsg *m = reinterpret_cast<const AnnounceMsg *>(data);
+    if (cfg_->group_id != 0) {
+      // Car ID set: only pair with a master sharing the same Car ID.
+      if (h->group_id != cfg_->group_id)
+        return;
+    } else {
+      // No Car ID: fall back to proximity — adopt the nearest master.
+      if (rssi < kPairRssiMin)
+        return;
+      cfg_->group_id = h->group_id;
     }
-    case MSG_HELLO: {
-      if (cfg_->role != ROLE_MASTER || !pairing_) return;
-      if (!accept(h) || len < static_cast<int>(sizeof(HelloMsg))) return;
-      const HelloMsg *m = reinterpret_cast<const HelloMsg *>(data);
-      int slot = -1;
+    memcpy(cfg_->master_mac, m->master_mac, 6);
+    cfg_->channel = m->channel;
+    cfg_->has_master = 1;
+    strncpy(cfg_->master_ssid, m->ssid, sizeof(cfg_->master_ssid) - 1);
+    cfg_->master_ssid[sizeof(cfg_->master_ssid) - 1] = 0;
+    strncpy(cfg_->car_name, m->car_name, sizeof(cfg_->car_name) - 1);
+    cfg_->car_name[sizeof(cfg_->car_name) - 1] = 0;
+    saveConfig(*cfg_);
+    addPeer(cfg_->master_mac);
+
+    HelloMsg reply = {};
+    fillHeader(&reply.h, MSG_HELLO);
+    WiFi.macAddress(reply.mac);
+    strncpy(reply.fw, VERSION, sizeof(reply.fw) - 1);
+    esp_now_send(cfg_->master_mac, reinterpret_cast<uint8_t *>(&reply),
+                 sizeof(reply));
+    pairing_ = false;
+    printHelper.log("INFO", "paired to master, group=0x%06X", cfg_->group_id);
+    break;
+  }
+  case MSG_HELLO: {
+    if (cfg_->role != ROLE_MASTER || !pairing_)
+      return;
+    if (!accept(h) || len < static_cast<int>(sizeof(HelloMsg)))
+      return;
+    const HelloMsg *m = reinterpret_cast<const HelloMsg *>(data);
+    int slot = -1;
+    for (int i = 0; i < kMaxPeers; i++) {
+      if (cfg_->peers[i].in_use && !memcmp(cfg_->peers[i].mac, m->mac, 6)) {
+        slot = i;
+        break;
+      }
+    }
+    if (slot < 0) {
       for (int i = 0; i < kMaxPeers; i++) {
-        if (cfg_->peers[i].in_use && !memcmp(cfg_->peers[i].mac, m->mac, 6)) {
+        if (!cfg_->peers[i].in_use) {
           slot = i;
           break;
         }
       }
-      if (slot < 0) {
-        for (int i = 0; i < kMaxPeers; i++) {
-          if (!cfg_->peers[i].in_use) {
-            slot = i;
-            break;
-          }
+    }
+    if (slot < 0)
+      return;  // table full
+    memcpy(cfg_->peers[slot].mac, m->mac, 6);
+    cfg_->peers[slot].wheel = h->wheel;
+    cfg_->peers[slot].in_use = 1;
+    strncpy(peerFw_[slot], m->fw, sizeof(peerFw_[slot]) - 1);
+    peerFw_[slot][sizeof(peerFw_[slot]) - 1] = 0;
+    peerSeen_[slot] = millis();
+    saveConfig(*cfg_);
+    savePeerFw();
+    addPeer(m->mac);
+    printHelper.log("INFO", "paired wheel %s", wheelName(h->wheel));
+    break;
+  }
+  case MSG_START: {
+    if (!accept(h) || len < static_cast<int>(sizeof(StartMsg)))
+      return;
+    const StartMsg *m = reinterpret_cast<const StartMsg *>(data);
+    if (startCb_)
+      startCb_(m->session_id, m->rate_hz);
+    break;
+  }
+  case MSG_STOP: {
+    if (!accept(h) || len < static_cast<int>(sizeof(StopMsg)))
+      return;
+    const StopMsg *m = reinterpret_cast<const StopMsg *>(data);
+    if (stopCb_)
+      stopCb_(m->session_id);
+    break;
+  }
+  case MSG_LIVE_GRID: {
+    if (cfg_->role != ROLE_MASTER || !accept(h))
+      return;
+    if (len < static_cast<int>(sizeof(LiveGridMsg)))
+      return;
+    const LiveGridMsg *m = reinterpret_cast<const LiveGridMsg *>(data);
+    if (liveCb_)
+      liveCb_(h->wheel, m->t_offset_ms, m->temps);
+    break;
+  }
+  case MSG_FW_PUSH: {
+    if (cfg_->role != ROLE_SLAVE || !accept(h))
+      return;
+    if (fwPushCb_)
+      fwPushCb_();
+    break;
+  }
+  case MSG_HEARTBEAT: {
+    if (cfg_->role != ROLE_MASTER || !accept(h))
+      return;
+    if (len < static_cast<int>(sizeof(HeartbeatMsg)))
+      return;
+    const HeartbeatMsg *m = reinterpret_cast<const HeartbeatMsg *>(data);
+    for (int i = 0; i < kMaxPeers; i++) {
+      if (cfg_->peers[i].in_use && !memcmp(cfg_->peers[i].mac, srcMac, 6)) {
+        peerSeen_[i] = millis();
+        if (strncmp(peerFw_[i], m->fw, sizeof(peerFw_[i])) != 0) {
+          strncpy(peerFw_[i], m->fw, sizeof(peerFw_[i]) - 1);
+          peerFw_[i][sizeof(peerFw_[i]) - 1] = 0;
+          savePeerFw();
         }
+        break;
       }
-      if (slot < 0) return;  // table full
-      memcpy(cfg_->peers[slot].mac, m->mac, 6);
-      cfg_->peers[slot].wheel = h->wheel;
-      cfg_->peers[slot].in_use = 1;
-      strncpy(peerFw_[slot], m->fw, sizeof(peerFw_[slot]) - 1);
-      peerFw_[slot][sizeof(peerFw_[slot]) - 1] = 0;
-      peerSeen_[slot] = millis();
-      saveConfig(*cfg_);
-      savePeerFw();
-      addPeer(m->mac);
-      printHelper.log("INFO", "paired wheel %s", wheelName(h->wheel));
-      break;
     }
-    case MSG_START: {
-      if (!accept(h) || len < static_cast<int>(sizeof(StartMsg))) return;
-      const StartMsg *m = reinterpret_cast<const StartMsg *>(data);
-      if (startCb_) startCb_(m->session_id, m->rate_hz);
-      break;
-    }
-    case MSG_STOP: {
-      if (!accept(h) || len < static_cast<int>(sizeof(StopMsg))) return;
-      const StopMsg *m = reinterpret_cast<const StopMsg *>(data);
-      if (stopCb_) stopCb_(m->session_id);
-      break;
-    }
-    case MSG_LIVE_GRID: {
-      if (cfg_->role != ROLE_MASTER || !accept(h)) return;
-      if (len < static_cast<int>(sizeof(LiveGridMsg))) return;
-      const LiveGridMsg *m = reinterpret_cast<const LiveGridMsg *>(data);
-      if (liveCb_) liveCb_(h->wheel, m->t_offset_ms, m->temps);
-      break;
-    }
-    case MSG_FW_PUSH: {
-      if (cfg_->role != ROLE_SLAVE || !accept(h)) return;
-      if (fwPushCb_) fwPushCb_();
-      break;
-    }
-    case MSG_HEARTBEAT: {
-      if (cfg_->role != ROLE_MASTER || !accept(h)) return;
-      if (len < static_cast<int>(sizeof(HeartbeatMsg))) return;
-      const HeartbeatMsg *m = reinterpret_cast<const HeartbeatMsg *>(data);
-      for (int i = 0; i < kMaxPeers; i++) {
-        if (cfg_->peers[i].in_use && !memcmp(cfg_->peers[i].mac, srcMac, 6)) {
-          peerSeen_[i] = millis();
-          if (strncmp(peerFw_[i], m->fw, sizeof(peerFw_[i])) != 0) {
-            strncpy(peerFw_[i], m->fw, sizeof(peerFw_[i]) - 1);
-            peerFw_[i][sizeof(peerFw_[i]) - 1] = 0;
-            savePeerFw();
-          }
-          break;
-        }
-      }
-      break;
-    }
-    default:
-      break;
+    break;
+  }
+  default:
+    break;
   }
 }
 

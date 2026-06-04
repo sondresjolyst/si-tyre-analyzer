@@ -1,0 +1,160 @@
+<!doctype html>
+<!-- Pixel-accurate mock of the on-device 2.8" ILI9341 TFT live view (landscape
+     320x240). Mirrors src/display/DisplayController.cpp: 2x2 car-from-above,
+     fixed 20-120C scale, small corner label, inner/mid/outer chips inside each
+     patch, bottom gradient legend. Drawn on a 320x240 canvas; the credit-card
+     calibration scales it to true physical size for your monitor. -->
+<html>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>SI Tyre Analyzer — TFT live (preview)</title>
+<style>
+body{background:#0b1220;color:#9ca3af;font-family:"Segoe UI",sans-serif;
+margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.cal{background:#111827;border:1px solid #374151;border-radius:10px;padding:14px 16px;
+max-width:520px;font-size:13px;line-height:1.5}
+.cal b{color:#60a5fa}
+.card{height:54px;background:linear-gradient(135deg,#1f6feb,#0b3a8a);
+border-radius:8px;margin:10px 0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.cal input[type=range]{width:100%}
+.panel{border:6px solid #2a2a2a;border-radius:10px;background:#000;line-height:0}
+canvas{image-rendering:pixelated;display:block}
+.cap{font:600 12px/1.5 Consolas,monospace;letter-spacing:.05em;text-align:center}
+.cap b{color:#60a5fa}
+</style>
+</head>
+<body>
+<div class='cal'>
+<b>Size calibration</b> — drag until the blue bar matches a real credit/bank card
+(85.6&nbsp;mm wide). Then the panel below shows at true physical size.
+<div class='card' id='card'></div>
+<input type='range' id='slider' min='200' max='700' value='309'>
+<div id='calout' class='cap' style='text-align:left;margin-top:6px'></div>
+</div>
+
+<div class='cap'><b>ILI9341 2.8" — landscape 320×240</b> · synthetic data</div>
+<div class='panel'><canvas id='tft' width='320' height='240'></canvas></div>
+<div class='cap'>2×2 car-from-above · fixed 20–120 °C · inner/mid/outer on patch</div>
+
+<script>
+const COLS=9, ROWS=5, LO=60, HI=110;
+const cv=document.getElementById('tft'), ctx=cv.getContext('2d');
+const BG='#111827', TILE='#1f2937', MUTED='#9ca3af', GRN='#22c55e', TXT='#f3f4f6';
+const SCREEN_W=320, SCREEN_H=240, CELL_W=160, CELL_H=120;
+const LABELS=['FL','FR','RL','RR'];
+const PANEL_DIAG_IN=2.8, PANEL_PPI=Math.sqrt(320*320+240*240)/PANEL_DIAG_IN; // 142.86
+
+// ---- calibration ----
+const card=document.getElementById('card'), slider=document.getElementById('slider'),
+      calout=document.getElementById('calout');
+function applyCal(){
+  const px=+slider.value;
+  card.style.width=px+'px';
+  const monPpi=px/3.3701;               // card = 85.6mm = 3.3701in
+  const scale=monPpi/PANEL_PPI;
+  cv.style.width=(SCREEN_W*scale)+'px';
+  cv.style.height=(SCREEN_H*scale)+'px';
+  calout.textContent='monitor ≈ '+monPpi.toFixed(0)+' ppi · panel shown '
+    +(SCREEN_W/monPpi).toFixed(2)+'" × '+(SCREEN_H/monPpi).toFixed(2)+'"';
+  localStorage.setItem('tftCardPx',px);
+}
+slider.addEventListener('input',applyCal);
+const saved=localStorage.getItem('tftCardPx'); if(saved)slider.value=saved;
+applyCal();
+
+// ---- rendering (mirrors DisplayController) ----
+// Multi-hue thermal ramp: spreads colour across the whole range so the
+// operating window (70-110C) shows clear hue change, not just shades of red.
+// 40/30/15/15 zones: blue/cyan (cold) -> green (optimal) -> yellow/orange ->
+// red (over). Green spans f 0.40-0.70 of the LO..HI range.
+const RAMP=[[0,30,70,200],[.20,30,165,215],[.40,40,185,80],
+            [.62,70,200,70],[.72,200,210,50],[.85,240,150,30],[1,215,30,30]];
+function color(t){
+  let f=(t-LO)/(HI-LO); f=Math.max(0,Math.min(1,f));
+  let i=0; while(i<RAMP.length-2 && f>RAMP[i+1][0]) i++;
+  const a=RAMP[i], b=RAMP[i+1], u=(f-a[0])/(b[0]-a[0]);
+  const r=Math.round(a[1]+(b[1]-a[1])*u);
+  const g=Math.round(a[2]+(b[2]-a[2])*u);
+  const bl=Math.round(a[3]+(b[3]-a[3])*u);
+  return `rgb(${r},${g},${bl})`;
+}
+function roundRect(x,y,w,h,r,fill){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
+}
+function text(s,x,y,size,col){            // GFX-like 6x8 (size1) / 12x16 (size2)
+  ctx.fillStyle=col; ctx.textBaseline='top'; ctx.font=(size*8)+'px "Courier New",monospace';
+  const adv=size*6;
+  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*adv,y);
+}
+
+function drawCell(slot,temps,valid){
+  const x=(slot%2)*CELL_W, y=Math.floor(slot/2)*CELL_H, m=2;
+  const tx=x+m, ty=y+m, tw=CELL_W-2*m, th=CELL_H-2*m;
+  ctx.fillStyle=BG; ctx.fillRect(x,y,CELL_W,CELL_H);
+  roundRect(tx,ty,tw,th,6,TILE);
+  ctx.beginPath(); ctx.arc(tx+tw-9,ty+8,4,0,7); ctx.fillStyle=valid?GRN:MUTED; ctx.fill();
+  if(!valid){text('--',tx+tw/2-12,ty+th/2-8,2,MUTED); return;}
+
+  const mapX=tx+4, mapY=ty+14, mapW=tw-8, mapH=th-20;
+  for(let r=0;r<ROWS;r++){
+    const y0=mapY+Math.floor(r*mapH/ROWS), y1=mapY+Math.floor((r+1)*mapH/ROWS);
+    for(let c=0;c<COLS;c++){
+      const x0=mapX+Math.floor(c*mapW/COLS), x1=mapX+Math.floor((c+1)*mapW/COLS);
+      ctx.fillStyle=color(temps[r*COLS+c]);
+      ctx.fillRect(x0,y0,x1-x0,y1-y0);
+    }
+  }
+  const third=Math.floor(COLS/3);
+  const zoneAvg=(c0,c1)=>{let s=0;for(let r=0;r<ROWS;r++)for(let c=c0;c<c1;c++)s+=temps[r*COLS+c];return s/((c1-c0)*ROWS);};
+  const zone=[Math.round(zoneAvg(0,third)),Math.round(zoneAvg(third,2*third)),Math.round(zoneAvg(2*third,COLS))];
+  const cy=mapY+Math.floor(mapH/2);
+  const zs=2.3, gw=Math.round(6*zs), gh=Math.round(8*zs);
+  for(let z=0;z<3;z++){
+    const buf=''+zone[z], chipW=gw*buf.length+6, chipH=gh+4;
+    const cx=mapX+Math.floor(mapW*(2*z+1)/6);
+    const bx=cx-Math.floor(chipW/2), by=cy-Math.floor(chipH/2);
+    roundRect(bx,by,chipW,chipH,3,BG);
+    text(buf,bx+3,by+2,zs,TXT);
+  }
+}
+
+// One full-run simulation per tyre: cold pit start -> warm-up -> lapping.
+// peak = steady mid temp, lean = outer(+)/inner(-) tread bias, side = -1 left
+// / +1 right (outer tyre in a corner heats its outer edge).
+const TYRES=[
+  {peak: 94, lean: 5, side:-1},   // FL  front-left, hottest, outer-biased
+  {peak: 90, lean: 4, side:+1},   // FR  front-right
+  {peak: 84, lean: 2, side:-1},   // RL  rear-left
+  {peak: 82, lean: 2, side:+1},   // RR  rear-right
+];
+function field(t,cfg){
+  const ambient=28, warm=1-Math.exp(-t/45);          // ~45s warm-up
+  const mid=ambient+(cfg.peak-ambient)*warm;
+  const latG=Math.sin(t/38*2*Math.PI);               // ~38s lap, L/R corners
+  const load=Math.max(0,cfg.side*latG)*warm;         // this side outer in corner
+  const cx=(COLS-1)/2;
+  let g=new Array(COLS*ROWS);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const n=(c-cx)/cx;                               // -1 inner .. +1 outer
+    let v=mid+cfg.lean*n-4*n*n;                       // lean + cooler edges
+    v+=(r-(ROWS-1)/2)*0.6;                            // around-tyre gradient
+    v+=load*8*Math.max(0,n);                          // cornering heats outer
+    v+=Math.random()*1.6-0.8;
+    g[r*COLS+c]=v;
+  }
+  return g;
+}
+
+let t0=Date.now();
+function tick(){
+  const t=(Date.now()-t0)/1000;
+  ctx.fillStyle=BG; ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
+  for(let s=0;s<4;s++) drawCell(s,field(t,TYRES[s]),true);
+}
+setInterval(tick,500); tick();
+</script>
+</body></html>

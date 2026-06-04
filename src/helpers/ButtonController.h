@@ -11,6 +11,8 @@
 
 #include <Arduino.h>
 
+#include "config/DeviceConfig.h"
+
 namespace tyre {
 
 enum ButtonStage : uint8_t {
@@ -24,7 +26,8 @@ class ButtonController {
  public:
   typedef void (*Callback)();
 
-  ButtonController(int pin, uint32_t pairMs = 3000, uint32_t apMs = 8000)
+  ButtonController(int pin, uint32_t pairMs = kPairHoldMs,
+                   uint32_t apMs = kApHoldMs)
       : pin_(pin), pairMs_(pairMs), apMs_(apMs) {}
 
   void begin() { pinMode(pin_, INPUT_PULLUP); }
