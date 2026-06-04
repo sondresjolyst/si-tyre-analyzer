@@ -5,6 +5,7 @@
     ".": {
       "release-type": "simple",
       "component": "si-tyre-analyzer",
+      "exclude-paths": ["tools"],
       "extra-files": [
         {
           "type": "generic",
