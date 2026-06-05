@@ -93,12 +93,12 @@ def animate(session: SessionData, save: str | None = None, fps: int = 8):
 
     update(0)
     if save:
-        import matplotlib.animation as animation
+        from matplotlib import animation
 
         anim = animation.FuncAnimation(fig, update, frames=n, interval=1000 / fps)
         anim.save(save, fps=fps)
         print(f"saved {save}")
-        return anim
+        return
     sax = fig.add_axes([0.2, 0.10, 0.6, 0.03])
     fig._slider = Slider(sax, "time", 0, n - 1, valinit=0, valstep=1)
     fig._slider.on_changed(update)
@@ -160,12 +160,12 @@ def dashboard(sessions: list[SessionData], save: str | None = None, fps: int = 8
 
     update(0)
     if save:
-        import matplotlib.animation as animation
+        from matplotlib import animation
 
         anim = animation.FuncAnimation(fig, update, frames=n, interval=1000 / fps)
         anim.save(save, fps=fps)
         print(f"saved {save}")
-        return anim
+        return
     sax = fig.add_axes([0.2, 0.06, 0.6, 0.025])
     fig._slider = Slider(sax, "time", 0, n - 1, valinit=0, valstep=1)
     fig._slider.on_changed(update)
