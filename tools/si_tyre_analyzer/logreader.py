@@ -17,8 +17,12 @@ LOG_MAGIC = 0x54595254  # "TYRT"
 LOG_VERSION = 2
 
 # magic, version, cols, rows, rate, wheel, scale, session_id, epoch_ms, mac[6],
-# group_id, fw[16], record_count, car_name[24], opt_lo, opt_hi, reserved[16]
-_HEADER_FMT = "<IHBBHBBIQ6sI16sI24sBB16s"
+# group_id, fw[16], record_count, car_name[24], opt_lo, opt_hi, flags, reserved[15]
+_HEADER_FMT = "<IHBBHBBIQ6sI16sI24sBBB15s"
+
+LOG_FLAG_FLIP_X = 1 << 0
+LOG_FLAG_FLIP_Y = 1 << 1
+LOG_FLAG_MOCK = 1 << 2
 HEADER_SIZE = struct.calcsize(_HEADER_FMT)
 assert HEADER_SIZE == 96, f"header must be 96 bytes, got {HEADER_SIZE}"
 
@@ -42,6 +46,7 @@ class SessionData:
     car_name: str
     opt_lo: float
     opt_hi: float
+    flags: int
     t_offsets_ms: np.ndarray  # shape (N,)
     grids: np.ndarray  # shape (N, rows, cols), deg C
     path: str = ""
@@ -49,6 +54,18 @@ class SessionData:
     @property
     def duration_s(self) -> float:
         return float(self.t_offsets_ms[-1]) / 1000.0 if len(self.t_offsets_ms) else 0.0
+
+    @property
+    def flip_x(self) -> bool:
+        return bool(self.flags & LOG_FLAG_FLIP_X)
+
+    @property
+    def flip_y(self) -> bool:
+        return bool(self.flags & LOG_FLAG_FLIP_Y)
+
+    @property
+    def is_mock(self) -> bool:
+        return bool(self.flags & LOG_FLAG_MOCK)
 
 
 def read_session(path: str) -> SessionData:
@@ -75,6 +92,7 @@ def read_session(path: str) -> SessionData:
         car_b,
         opt_lo,
         opt_hi,
+        flags,
         _reserved,
     ) = struct.unpack(_HEADER_FMT, data[:HEADER_SIZE])
 
@@ -82,9 +100,11 @@ def read_session(path: str) -> SessionData:
         raise ValueError(f"bad magic 0x{magic:08X}")
     if version > LOG_VERSION:
         raise ValueError(f"unsupported version {version}")
-    # v1 predates the optimal-window field; fall back to the historic default.
+    # v1 predates the optimal-window + flags fields; fall back to defaults.
     if version < 2 or opt_hi <= opt_lo:
         opt_lo, opt_hi = int(OPT_LO_DEFAULT), int(OPT_HI_DEFAULT)
+    if version < 2:
+        flags = 0
     if scale == 0:
         raise ValueError("bad temperature scale (0)")
     if not 1 <= cols <= 64 or not 1 <= rows <= 64:
@@ -125,6 +145,7 @@ def read_session(path: str) -> SessionData:
         car_name=car,
         opt_lo=float(opt_lo),
         opt_hi=float(opt_hi),
+        flags=int(flags),
         t_offsets_ms=t_offsets,
         grids=grids,
         path=path,

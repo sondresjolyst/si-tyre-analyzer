@@ -13,6 +13,8 @@
 #include "storage/LogFormat.h"
 
 using tyre::kTempScale;
+using tyre::LOG_FLAG_FLIP_X;
+using tyre::LOG_FLAG_MOCK;
 using tyre::LOG_MAGIC;
 using tyre::LOG_VERSION;
 using tyre::LogHeader;
@@ -49,6 +51,7 @@ void test_build_and_parse() {
   h.group_id = 0x1234;
   h.opt_lo = 80;
   h.opt_hi = 95;
+  h.flags = LOG_FLAG_FLIP_X | LOG_FLAG_MOCK;
   h.record_count = 0;  // not finalised
 
   std::vector<uint8_t> buf(sizeof(LogHeader) + 2 * stride, 0);
@@ -70,6 +73,7 @@ void test_build_and_parse() {
   TEST_ASSERT_EQUAL_HEX32(0xDEADBEEF, rh.session_id);
   TEST_ASSERT_EQUAL_UINT8(80, rh.opt_lo);
   TEST_ASSERT_EQUAL_UINT8(95, rh.opt_hi);
+  TEST_ASSERT_EQUAL_UINT8(LOG_FLAG_FLIP_X | LOG_FLAG_MOCK, rh.flags);
 
   // record_count==0 -> recover from filesize
   size_t recovered = (buf.size() - sizeof(LogHeader)) / stride;

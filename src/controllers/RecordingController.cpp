@@ -2,8 +2,11 @@
 
 #include "controllers/RecordingController.h"
 
+#include <cstring>
+
 #include "processing/Downsample.h"
 #include "sensor/SensorTypes.h"
+#include "storage/LogFormat.h"
 
 #ifndef SESSION_MAX_SEC
 #define SESSION_MAX_SEC 1800
@@ -17,9 +20,16 @@ bool RecordingController::start(uint32_t sessionId, uint64_t startEpochMs,
                                 const char *carName, uint8_t optLo,
                                 uint8_t optHi) {
   const float rate = sensor_->frameRateHz();
+  uint8_t flags = 0;
+  if (flipX_)
+    flags |= LOG_FLAG_FLIP_X;
+  if (flipY_)
+    flags |= LOG_FLAG_FLIP_Y;
+  if (strcmp(sensor_->name(), "mock") == 0)
+    flags |= LOG_FLAG_MOCK;
   if (!logger_->startSession(sessionId, startEpochMs, wheel,
                              static_cast<uint16_t>(rate), mac, fwVer, groupId,
-                             carName, optLo, optHi)) {
+                             carName, optLo, optHi, flags)) {
     return false;
   }
   sessionStartMs_ = millis();

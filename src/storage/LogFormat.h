@@ -14,6 +14,11 @@ namespace tyre {
 static const uint32_t LOG_MAGIC = 0x54595254;  // "TYRT" little-endian
 static const uint16_t LOG_VERSION = 2;
 
+// LogHeader.flags bits (v2+).
+static const uint8_t LOG_FLAG_FLIP_X = 1 << 0;  // columns mirrored at capture
+static const uint8_t LOG_FLAG_FLIP_Y = 1 << 1;  // rows mirrored at capture
+static const uint8_t LOG_FLAG_MOCK = 1 << 2;    // recorded from the mock sensor
+
 #pragma pack(push, 1)
 struct LogHeader {                  // exactly 96 bytes
   uint32_t magic;                   // LOG_MAGIC
@@ -32,7 +37,8 @@ struct LogHeader {                  // exactly 96 bytes
   char car_name[24];                // user car label, null-padded ("" if unset)
   uint8_t opt_lo;                   // optimal window low edge (degC); v2+
   uint8_t opt_hi;                   // optimal window high edge (degC); v2+
-  uint8_t reserved[16];             // pad to 96
+  uint8_t flags;                    // LOG_FLAG_* bitfield; v2+
+  uint8_t reserved[15];             // pad to 96
 };
 
 struct SampleRecord {    // fixed size = 4 + 2*cols*rows

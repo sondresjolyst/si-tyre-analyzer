@@ -24,6 +24,7 @@ WHEEL = 1  # FR
 CAR_NAME = "Volvo 242 Turbo"
 OPT_LO = 80
 OPT_HI = 95
+FLAGS = 0b101  # flip_x + mock
 N = 5
 
 
@@ -31,7 +32,7 @@ def build_fixture(path, finalised=True):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cells = COLS * ROWS
     header = struct.pack(
-        "<IHBBHBBIQ6sI16sI24sBB16s",
+        "<IHBBHBBIQ6sI16sI24sBBB15s",
         LOG_MAGIC,
         LOG_VERSION,
         COLS,
@@ -48,7 +49,8 @@ def build_fixture(path, finalised=True):
         CAR_NAME.encode(),
         OPT_LO,
         OPT_HI,
-        b"\x00" * 16,
+        FLAGS,
+        b"\x00" * 15,
     )
     assert len(header) == HEADER_SIZE
 
@@ -72,6 +74,8 @@ def test_round_trip():
     assert s.group_id == GROUP_ID
     assert s.car_name == CAR_NAME
     assert s.opt_lo == OPT_LO and s.opt_hi == OPT_HI
+    assert s.flags == FLAGS
+    assert s.flip_x and s.is_mock and not s.flip_y
     assert s.sample_rate_hz == RATE
     assert len(s.t_offsets_ms) == N
     assert s.grids.shape == (N, ROWS, COLS)
@@ -106,11 +110,12 @@ def _header(**over):
         "car": CAR_NAME.encode(),
         "opt_lo": OPT_LO,
         "opt_hi": OPT_HI,
-        "reserved": b"\x00" * 16,
+        "flags": FLAGS,
+        "reserved": b"\x00" * 15,
     }
     f.update(over)
     return struct.pack(
-        "<IHBBHBBIQ6sI16sI24sBB16s",
+        "<IHBBHBBIQ6sI16sI24sBBB15s",
         f["magic"],
         f["version"],
         f["cols"],
@@ -127,6 +132,7 @@ def _header(**over):
         f["car"],
         f["opt_lo"],
         f["opt_hi"],
+        f["flags"],
         f["reserved"],
     )
 
@@ -159,10 +165,11 @@ def test_v1_falls_back_to_default_window():
     path = os.path.join(os.path.dirname(FIXTURE), "_v1.bin")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as fh:
-        fh.write(_header(version=1, opt_lo=0, opt_hi=0))
+        fh.write(_header(version=1, opt_lo=0, opt_hi=0, flags=0))
     try:
         s = read_session(path)
         assert s.opt_lo == OPT_LO_DEFAULT and s.opt_hi == OPT_HI_DEFAULT
+        assert s.flags == 0 and not s.is_mock
     finally:
         os.remove(path)
 
