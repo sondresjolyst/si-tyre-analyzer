@@ -6,6 +6,8 @@
 #include <ctype.h>
 
 #include <algorithm>
+#include <cstdio>
+#include <vector>
 
 #include "helpers/PRINTHelper.h"
 #include "processing/Downsample.h"
@@ -72,9 +74,9 @@ bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
   char slug[20];
   carSlug(carName, slug, sizeof(slug));
   char path[72];
-  snprintf(path, sizeof(path), "%s/%08lu_%s_%s_%lu.bin", kDir,
-           static_cast<unsigned long>(nextSeq()), slug, wheelName(wheel),
-           static_cast<unsigned long>(sessionId));
+  snprintf(path, sizeof(path), "%s/%08u_%s_%s_%u.bin", kDir,
+           static_cast<unsigned>(nextSeq()), slug, wheelName(wheel),
+           static_cast<unsigned>(sessionId));
   file_ = LittleFS.open(path, "w");
   if (!file_) {
     printHelper.log("ERROR", "open session file failed: %s", path);
@@ -156,8 +158,8 @@ bool SessionLogger::endSession() {
   file_.flush();
   file_.close();
   recording_ = false;
-  printHelper.log("INFO", "session ended: %lu records",
-                  static_cast<unsigned long>(recordCount_));
+  printHelper.log("INFO", "session ended: %u records",
+                  static_cast<unsigned>(recordCount_));
   return true;
 }
 

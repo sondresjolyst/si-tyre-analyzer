@@ -12,7 +12,13 @@
 #include "processing/Downsample.h"
 #include "storage/LogFormat.h"
 
-using namespace tyre;
+using tyre::kTempScale;
+using tyre::LOG_MAGIC;
+using tyre::LOG_VERSION;
+using tyre::LogHeader;
+using tyre::recordStride;
+using tyre::scaleTemp;
+using tyre::unscaleTemp;
 
 void setUp() {}
 void tearDown() {}
