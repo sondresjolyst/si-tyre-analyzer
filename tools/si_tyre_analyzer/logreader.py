@@ -11,12 +11,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-LOG_MAGIC = 0x54595254  # "TYRT"
-LOG_VERSION = 1
+from .constants import OPT_HI_DEFAULT, OPT_LO_DEFAULT
 
-# magic, version, cols, rows, rate, wheel, scale, session_id,
-# epoch_ms, mac[6], group_id, fw[16], record_count, car_name[24], reserved[18]
-_HEADER_FMT = "<IHBBHBBIQ6sI16sI24s18s"
+LOG_MAGIC = 0x54595254  # "TYRT"
+LOG_VERSION = 2
+
+# magic, version, cols, rows, rate, wheel, scale, session_id, epoch_ms, mac[6],
+# group_id, fw[16], record_count, car_name[24], opt_lo, opt_hi, reserved[16]
+_HEADER_FMT = "<IHBBHBBIQ6sI16sI24sBB16s"
 HEADER_SIZE = struct.calcsize(_HEADER_FMT)
 assert HEADER_SIZE == 96, f"header must be 96 bytes, got {HEADER_SIZE}"
 
@@ -38,6 +40,8 @@ class SessionData:
     group_id: int
     fw_version: str
     car_name: str
+    opt_lo: float
+    opt_hi: float
     t_offsets_ms: np.ndarray  # shape (N,)
     grids: np.ndarray  # shape (N, rows, cols), deg C
     path: str = ""
@@ -69,13 +73,18 @@ def read_session(path: str) -> SessionData:
         fw,
         record_count,
         car_b,
+        opt_lo,
+        opt_hi,
         _reserved,
     ) = struct.unpack(_HEADER_FMT, data[:HEADER_SIZE])
 
     if magic != LOG_MAGIC:
         raise ValueError(f"bad magic 0x{magic:08X}")
-    if version != LOG_VERSION:
+    if version > LOG_VERSION:
         raise ValueError(f"unsupported version {version}")
+    # v1 predates the optimal-window field; fall back to the historic default.
+    if version < 2 or opt_hi <= opt_lo:
+        opt_lo, opt_hi = int(OPT_LO_DEFAULT), int(OPT_HI_DEFAULT)
     if scale == 0:
         raise ValueError("bad temperature scale (0)")
     if not 1 <= cols <= 64 or not 1 <= rows <= 64:
@@ -114,6 +123,8 @@ def read_session(path: str) -> SessionData:
         group_id=group_id,
         fw_version=fw_str,
         car_name=car,
+        opt_lo=float(opt_lo),
+        opt_hi=float(opt_hi),
         t_offsets_ms=t_offsets,
         grids=grids,
         path=path,

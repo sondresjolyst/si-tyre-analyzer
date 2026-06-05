@@ -25,6 +25,8 @@ bool loadConfig(DeviceConfig *out) {
     out->flip_x = p.getUChar("flip_x", out->flip_x);
     out->flip_y = p.getUChar("flip_y", out->flip_y);
     out->channel = p.getUChar("channel", out->channel);
+    out->opt_lo = p.getUChar("opt_lo", out->opt_lo);
+    out->opt_hi = p.getUChar("opt_hi", out->opt_hi);
     out->group_id = p.getUInt("group", out->group_id);
     String car = p.getString("car", out->car_name);
     strncpy(out->car_name, car.c_str(), sizeof(out->car_name) - 1);
@@ -54,6 +56,8 @@ void saveConfig(const DeviceConfig &cfg) {
   p.putUChar("flip_x", cfg.flip_x);
   p.putUChar("flip_y", cfg.flip_y);
   p.putUChar("channel", cfg.channel);
+  p.putUChar("opt_lo", cfg.opt_lo);
+  p.putUChar("opt_hi", cfg.opt_hi);
   p.putUInt("group", cfg.group_id);
   p.putString("car", cfg.car_name);
   p.putUChar("has_master", cfg.has_master);

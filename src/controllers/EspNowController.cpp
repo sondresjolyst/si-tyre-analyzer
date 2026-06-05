@@ -184,7 +184,8 @@ void EspNowController::sendFwPush() {
   printHelper.log("INFO", "fw push sent to wheels");
 }
 
-void EspNowController::sendStart(uint32_t sessionId, uint16_t rateHz) {
+void EspNowController::sendStart(uint32_t sessionId, uint16_t rateHz,
+                                 uint8_t optLo, uint8_t optHi) {
   StartMsg m = {};
   fillHeader(&m.h, MSG_START);
   m.session_id = sessionId;
@@ -193,6 +194,8 @@ void EspNowController::sendStart(uint32_t sessionId, uint16_t rateHz) {
   m.rate_hz = rateHz;
   m.cols = kGridCols;
   m.rows = kGridRows;
+  m.opt_lo = optLo;
+  m.opt_hi = optHi;
   sendToAllPeers(reinterpret_cast<uint8_t *>(&m), sizeof(m));
 }
 
@@ -305,7 +308,7 @@ void EspNowController::onRecv(const uint8_t *srcMac, const uint8_t *data,
       return;
     const StartMsg *m = reinterpret_cast<const StartMsg *>(data);
     if (startCb_)
-      startCb_(m->session_id, m->rate_hz);
+      startCb_(m->session_id, m->rate_hz, m->opt_lo, m->opt_hi);
     break;
   }
   case MSG_STOP: {

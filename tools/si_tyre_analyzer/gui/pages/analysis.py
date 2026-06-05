@@ -27,10 +27,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...constants import TEMP_SCALE_HI, TEMP_SCALE_LO, WHEELS
+from ...constants import OPT_HI_DEFAULT, OPT_LO_DEFAULT, WHEELS
 from ...lapdata import parse_laps
 from .. import meta, prefs, theme
-from ..colors import heat_rgb, tyre_cmap
+from ..colors import heat_rgb, scale_hi, scale_lo, tyre_cmap
 from ..icons import icon, tool
 from ..runs import DEFAULT_DIR, run_label
 from ..widgets import RunSelector
@@ -503,7 +503,7 @@ class AnalysisPage(QWidget):
                 f"in−out {vals[0] - vals[2]:+.1f}°   mid−edge {vals[1] - edges:+.1f}°",
             )
             a.set_ylabel("°C", color=theme.MUTED, fontsize=8)
-            a.set_ylim(0, TEMP_SCALE_HI)
+            a.set_ylim(0, scale_hi(*self._window()))
         self._c_prof.draw_idle()
 
     def _plot_over(self):
@@ -616,7 +616,7 @@ class AnalysisPage(QWidget):
                 continue
             av = float(s.grids.mean())
             avgs[w] = av
-            rr, gg, bb = heat_rgb(av, TEMP_SCALE_LO, TEMP_SCALE_HI)
+            rr, gg, bb = heat_rgb(av, *self._window())
             ax.add_patch(
                 FancyBboxPatch(
                     (x, y),
@@ -661,19 +661,25 @@ class AnalysisPage(QWidget):
         self._balance_legend()
         self._c_bal.draw_idle()
 
+    def _window(self):
+        for s in (self._run or {}).values():
+            if s is not None:
+                return s.opt_lo, s.opt_hi
+        return OPT_LO_DEFAULT, OPT_HI_DEFAULT
+
     def _balance_legend(self):
+        opt_lo, opt_hi = self._window()
+        lo, hi = scale_lo(opt_lo, opt_hi), scale_hi(opt_lo, opt_hi)
         cax = self._fig_bal.add_axes([0.34, 0.055, 0.32, 0.012])
         grad = np.linspace(0, 1, 256)[None, :]
         cax.imshow(
             grad,
             aspect="auto",
-            cmap=tyre_cmap(),
-            extent=[TEMP_SCALE_LO, TEMP_SCALE_HI, 0, 1],
+            cmap=tyre_cmap(opt_lo, opt_hi),
+            extent=[lo, hi, 0, 1],
         )
         cax.set_yticks([])
-        cax.set_xticks(
-            [TEMP_SCALE_LO, (TEMP_SCALE_LO + TEMP_SCALE_HI) / 2, TEMP_SCALE_HI]
-        )
+        cax.set_xticks([lo, (lo + hi) / 2, hi])
         cax.tick_params(colors=theme.MUTED, labelsize=8, length=0)
         for sp in cax.spines.values():
             sp.set_color(theme.BORDER)

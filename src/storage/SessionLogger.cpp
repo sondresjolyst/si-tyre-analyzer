@@ -55,7 +55,8 @@ bool SessionLogger::begin() {
 bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
                                  uint8_t wheel, uint16_t rateHz,
                                  const uint8_t mac[6], const char *fwVer,
-                                 uint32_t groupId, const char *carName) {
+                                 uint32_t groupId, const char *carName,
+                                 uint8_t optLo, uint8_t optHi) {
   if (recording_)
     return false;
 
@@ -95,6 +96,8 @@ bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
     memcpy(h.device_mac, mac, 6);
   strncpy(h.fw_version, fwVer ? fwVer : "", sizeof(h.fw_version) - 1);
   strncpy(h.car_name, carName ? carName : "", sizeof(h.car_name) - 1);
+  h.opt_lo = optLo;
+  h.opt_hi = optHi;
   h.record_count = 0;
 
   if (file_.write(reinterpret_cast<uint8_t *>(&h), sizeof(h)) != sizeof(h)) {

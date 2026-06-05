@@ -79,6 +79,8 @@ static bool ledOn = false;
 
 // Set by ESP-NOW callbacks (kept short); acted on in loop().
 static volatile bool gStartPending = false;
+static volatile uint8_t gStartOptLo = 0;
+static volatile uint8_t gStartOptHi = 0;
 static volatile bool gStopPending = false;
 // A finished slave session waiting to be uploaded to the master.
 static bool gUploadPending = false;
@@ -98,14 +100,15 @@ static uint32_t nextSessionNumber() {
   return n;
 }
 
-static void startLocalSession(uint32_t sessionId) {
+static void startLocalSession(uint32_t sessionId, uint8_t optLo,
+                              uint8_t optHi) {
   if (!gConfig.has_sensor)
     return;
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
   gSessionId = sessionId;
   if (recorder.start(sessionId, /*epochMs=*/0, gConfig.wheel, mac, VERSION,
-                     gConfig.group_id, gConfig.car_name)) {
+                     gConfig.group_id, gConfig.car_name, optLo, optHi)) {
     appState = STATE_RECORDING;
   }
 }
@@ -145,12 +148,13 @@ static void toggleRecording() {
 
   uint32_t sessionId = nextSessionNumber();
   if (gConfig.role == tyre::ROLE_MASTER) {
-    gEsp.sendStart(sessionId, static_cast<uint16_t>(SAMPLE_RATE_HZ));
+    gEsp.sendStart(sessionId, static_cast<uint16_t>(SAMPLE_RATE_HZ),
+                   gConfig.opt_lo, gConfig.opt_hi);
     gSessionId = sessionId;
     gMasterStartMs = millis();
     appState = STATE_RECORDING;  // master tracks session even without a sensor
   }
-  startLocalSession(sessionId);
+  startLocalSession(sessionId, gConfig.opt_lo, gConfig.opt_hi);
 }
 
 static void enterPairing() {
@@ -171,8 +175,11 @@ static void enterConfigAP() {
 
 // ── ESP-NOW callbacks (run in WiFi task — keep short, defer to loop)
 // ──────────
-static void onEspStart(uint32_t sessionId, uint16_t /*rateHz*/) {
+static void onEspStart(uint32_t sessionId, uint16_t /*rateHz*/, uint8_t optLo,
+                       uint8_t optHi) {
   gSessionId = sessionId;
+  gStartOptLo = optLo;
+  gStartOptHi = optHi;
   gStartPending = true;
 }
 static void onEspStop(uint32_t /*sessionId*/) { gStopPending = true; }
@@ -365,12 +372,12 @@ static void dumpFile(const String &name) {
 static void handleCommand(String cmd) {
   cmd.trim();
   if (cmd == "info") {
-    Serial.printf("role=%s wheel=%s has_sensor=%u ch=%u group=0x%06X state=%d "
-                  "fs=%u/%u recording=%d\n",
+    Serial.printf("role=%s wheel=%s has_sensor=%u ch=%u group=0x%06X "
+                  "optimal=%u-%u state=%d fs=%u/%u recording=%d\n",
                   gConfig.role == tyre::ROLE_MASTER ? "master" : "slave",
                   tyre::wheelName(gConfig.wheel), gConfig.has_sensor,
-                  gConfig.channel, gConfig.group_id, appState,
-                  (unsigned)LittleFS.usedBytes(),
+                  gConfig.channel, gConfig.group_id, gConfig.opt_lo,
+                  gConfig.opt_hi, appState, (unsigned)LittleFS.usedBytes(),
                   (unsigned)LittleFS.totalBytes(), recorder.isRecording());
   } else if (cmd == "rec") {
     toggleRecording();
@@ -424,6 +431,13 @@ static void handleCommand(String cmd) {
         static_cast<uint32_t>(strtoul(cmd.substring(4).c_str(), nullptr, 0));
     tyre::saveConfig(gConfig);
     Serial.printf("OK car id=0x%06X\n", gConfig.group_id);
+  } else if (cmd.startsWith("optimal ")) {
+    const String a = cmd.substring(8);
+    const int sp = a.indexOf(' ');
+    gConfig.opt_lo = a.substring(0, sp).toInt();
+    gConfig.opt_hi = (sp >= 0 ? a.substring(sp + 1).toInt() : 0);
+    tyre::saveConfig(gConfig);
+    Serial.printf("OK optimal %u-%u C\n", gConfig.opt_lo, gConfig.opt_hi);
   } else if (cmd == "reboot") {
     Serial.println("OK reboot");
     delay(100);
@@ -554,7 +568,7 @@ void loop() {
   // Deferred ESP-NOW actions (set in the recv callback).
   if (gStartPending) {
     gStartPending = false;
-    startLocalSession(gSessionId);
+    startLocalSession(gSessionId, gStartOptLo, gStartOptHi);
   }
   if (gStopPending) {
     gStopPending = false;

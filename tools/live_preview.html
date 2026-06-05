@@ -44,7 +44,7 @@ text-align:center;margin-top:8px;letter-spacing:.02em}
 .legend{margin:16px auto 0;max-width:320px}
 .legbar{height:12px;border-radius:6px;border:1px solid var(--border);
 background:linear-gradient(90deg,rgb(30,70,200) 0%,rgb(30,165,215) 20%,
-rgb(40,185,80) 40%,rgb(70,200,70) 62%,rgb(200,210,50) 72%,
+rgb(40,185,80) 40%,rgb(70,200,70) 60.6%,rgb(200,210,50) 70%,
 rgb(240,150,30) 85%,rgb(215,30,30) 100%)}
 .leglbl{display:flex;justify-content:space-between;
 font:600 11px/1 Consolas,'Cascadia Mono',monospace;color:var(--muted);
@@ -59,14 +59,33 @@ margin-top:5px}
 <div class='tyre'><div class='th'><span>RR</span><span class='dot' id='dRR'></span></div><div class='heat' id='RR'></div><div class='stat' id='sRR'>—</div></div>
 </div>
 <div class='legend'><div class='legbar'></div>
-<div class='leglbl'><span>60&deg;</span><span>85&deg;</span><span>110&deg;</span></div></div>
+<div class='leglbl'><span id='lgLo'>60&deg;</span><span id='lgMid'>85&deg;</span><span id='lgHi'>110&deg;</span></div></div>
+<div style='display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px;color:var(--muted);font:600 12px/1 Consolas,monospace'>
+<span>Optimal &deg;C</span>
+<input id='optLo' type='number' value='80' style='width:64px;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--bgd);color:var(--txt)'>
+<span>&ndash;</span>
+<input id='optHi' type='number' value='95' style='width:64px;padding:6px;border-radius:7px;border:1px solid var(--border);background:var(--bgd);color:var(--txt)'>
+</div>
 <a class='btn' href='#' style='margin-top:18px'>&larr; Back</a>
 
 <script>
-const COLS=9, ROWS=5, MID=Math.floor(ROWS/2), LO=60, HI=110;
-// blue->green->yellow->red ramp, shared with colors.py / Colormap.h / pageLive
+const COLS=9, ROWS=5, MID=Math.floor(ROWS/2);
+let OPTLO=80, OPTHI=95, LO=60, HI=110;
+// Cold 40% / optimal 30% / high 15% / superhigh 15%; scale derives from window.
 const RAMP=[[0,30,70,200],[.2,30,165,215],[.4,40,185,80],
-            [.62,70,200,70],[.72,200,210,50],[.85,240,150,30],[1,215,30,30]];
+            [.606,70,200,70],[.7,200,210,50],[.85,240,150,30],[1,215,30,30]];
+function applyWindow(){
+  OPTLO=+document.getElementById('optLo').value||80;
+  OPTHI=+document.getElementById('optHi').value||95;
+  const g=Math.max(1,OPTHI-OPTLO);
+  LO=OPTLO-1.33333*g; HI=OPTHI+g;
+  document.getElementById('lgLo').innerHTML=Math.round(LO)+'&deg;';
+  document.getElementById('lgMid').innerHTML=Math.round((LO+HI)/2)+'&deg;';
+  document.getElementById('lgHi').innerHTML=Math.round(HI)+'&deg;';
+}
+document.getElementById('optLo').addEventListener('input',applyWindow);
+document.getElementById('optHi').addEventListener('input',applyWindow);
+applyWindow();
 function color(t){
   let f=(t-LO)/(HI-LO); f=Math.max(0,Math.min(1,f));
   let i=0; while(i<RAMP.length-2 && f>RAMP[i+1][0]) i++;

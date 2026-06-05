@@ -12,7 +12,7 @@
 namespace tyre {
 
 static const uint32_t LOG_MAGIC = 0x54595254;  // "TYRT" little-endian
-static const uint16_t LOG_VERSION = 1;
+static const uint16_t LOG_VERSION = 2;
 
 #pragma pack(push, 1)
 struct LogHeader {                  // exactly 96 bytes
@@ -30,7 +30,9 @@ struct LogHeader {                  // exactly 96 bytes
   char fw_version[16];              // "v0.1.0", null-padded
   uint32_t record_count;            // patched at close; 0 if not finalised
   char car_name[24];                // user car label, null-padded ("" if unset)
-  uint8_t reserved[18];             // pad to 96
+  uint8_t opt_lo;                   // optimal window low edge (degC); v2+
+  uint8_t opt_hi;                   // optimal window high edge (degC); v2+
+  uint8_t reserved[16];             // pad to 96
 };
 
 struct SampleRecord {    // fixed size = 4 + 2*cols*rows

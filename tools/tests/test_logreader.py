@@ -10,6 +10,7 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from si_tyre_analyzer.constants import OPT_HI_DEFAULT, OPT_LO_DEFAULT
 from si_tyre_analyzer.logreader import HEADER_SIZE, LOG_MAGIC, LOG_VERSION, read_session
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "sample_session.bin")
@@ -21,6 +22,8 @@ SESSION_ID = 42
 GROUP_ID = 0x1234
 WHEEL = 1  # FR
 CAR_NAME = "Volvo 242 Turbo"
+OPT_LO = 80
+OPT_HI = 95
 N = 5
 
 
@@ -28,7 +31,7 @@ def build_fixture(path, finalised=True):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cells = COLS * ROWS
     header = struct.pack(
-        "<IHBBHBBIQ6sI16sI24s18s",
+        "<IHBBHBBIQ6sI16sI24sBB16s",
         LOG_MAGIC,
         LOG_VERSION,
         COLS,
@@ -43,7 +46,9 @@ def build_fixture(path, finalised=True):
         b"v0.1.0",
         N if finalised else 0,
         CAR_NAME.encode(),
-        b"\x00" * 18,
+        OPT_LO,
+        OPT_HI,
+        b"\x00" * 16,
     )
     assert len(header) == HEADER_SIZE
 
@@ -66,6 +71,7 @@ def test_round_trip():
     assert s.session_id == SESSION_ID
     assert s.group_id == GROUP_ID
     assert s.car_name == CAR_NAME
+    assert s.opt_lo == OPT_LO and s.opt_hi == OPT_HI
     assert s.sample_rate_hz == RATE
     assert len(s.t_offsets_ms) == N
     assert s.grids.shape == (N, ROWS, COLS)
@@ -98,11 +104,13 @@ def _header(**over):
         "fw": b"v0.1.0",
         "count": 0,
         "car": CAR_NAME.encode(),
-        "reserved": b"\x00" * 18,
+        "opt_lo": OPT_LO,
+        "opt_hi": OPT_HI,
+        "reserved": b"\x00" * 16,
     }
     f.update(over)
     return struct.pack(
-        "<IHBBHBBIQ6sI16sI24s18s",
+        "<IHBBHBBIQ6sI16sI24sBB16s",
         f["magic"],
         f["version"],
         f["cols"],
@@ -117,6 +125,8 @@ def _header(**over):
         f["fw"],
         f["count"],
         f["car"],
+        f["opt_lo"],
+        f["opt_hi"],
         f["reserved"],
     )
 
@@ -138,14 +148,28 @@ def _raises_valueerror(payload):
 def test_rejects_malformed_files():
     assert _raises_valueerror(b"\x00" * 8)  # too small for header
     assert _raises_valueerror(_header(magic=0xDEADBEEF))  # bad magic
-    assert _raises_valueerror(_header(version=99))  # unsupported version
+    assert _raises_valueerror(_header(version=99))  # newer than we support
     assert _raises_valueerror(_header(scale=0))  # zero temp scale
     assert _raises_valueerror(_header(cols=0))  # zero grid dimension
     assert _raises_valueerror(_header(cols=200))  # implausible grid size
+
+
+def test_v1_falls_back_to_default_window():
+    # v1 predates the optimal-window field; reader uses the historic default.
+    path = os.path.join(os.path.dirname(FIXTURE), "_v1.bin")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(_header(version=1, opt_lo=0, opt_hi=0))
+    try:
+        s = read_session(path)
+        assert s.opt_lo == OPT_LO_DEFAULT and s.opt_hi == OPT_HI_DEFAULT
+    finally:
+        os.remove(path)
 
 
 if __name__ == "__main__":
     test_round_trip()
     test_count_recovery_from_filesize()
     test_rejects_malformed_files()
+    test_v1_falls_back_to_default_window()
     print("ALL PYTHON TESTS PASSED")

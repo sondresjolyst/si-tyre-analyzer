@@ -10,20 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from .gui.colors import scale_hi, scale_lo, tyre_cmap
 from .logreader import SessionData
-
-
-def _tyre_cmap():
-    """Blue -> (warm) -> red, matching the device dashboard color() function."""
-    from matplotlib.colors import ListedColormap
-    cols = []
-    for i in range(256):
-        f = i / 255.0
-        r = min(1.0, f * 2.0)
-        g = max(0.0, 0.314 * (1.0 - abs(f - 0.5) * 2.0))
-        b = min(1.0, (1.0 - f) * 2.0)
-        cols.append((r, g, b))
-    return ListedColormap(cols)
 
 
 def _col_profile(grid: np.ndarray) -> str:
@@ -34,6 +22,7 @@ def _col_profile(grid: np.ndarray) -> str:
 def _add_player(fig, slider, n, base_ms):
     """Play/Pause + speed buttons that advance the slider via a timer."""
     from matplotlib.widgets import Button
+
     state = {"playing": False, "speed": 1}
     ax_play = fig.add_axes([0.03, 0.03, 0.09, 0.045])
     ax_spd = fig.add_axes([0.88, 0.03, 0.09, 0.045])
@@ -72,16 +61,22 @@ def animate(session: SessionData, save: str | None = None, fps: int = 8):
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider
 
-    cmap = _tyre_cmap()
-    vmin = float(np.nanmin(session.grids))
-    vmax = float(np.nanmax(session.grids))
+    cmap = tyre_cmap(session.opt_lo, session.opt_hi)
+    vmin = scale_lo(session.opt_lo, session.opt_hi)
+    vmax = scale_hi(session.opt_lo, session.opt_hi)
     n = len(session.grids)
     base_ms = 1000.0 / max(1, session.sample_rate_hz)
 
     fig, ax = plt.subplots(figsize=(6, 4.5))
     fig.subplots_adjust(bottom=0.26)
-    im = ax.imshow(session.grids[0], cmap=cmap, vmin=vmin, vmax=vmax,
-                   aspect="auto", interpolation="nearest")
+    im = ax.imshow(
+        session.grids[0],
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        aspect="auto",
+        interpolation="nearest",
+    )
     fig.colorbar(im, ax=ax, label="°C")
     cols = session.grids.shape[2]
     ax.set_xticks(np.arange(cols))
@@ -99,8 +94,8 @@ def animate(session: SessionData, save: str | None = None, fps: int = 8):
     update(0)
     if save:
         import matplotlib.animation as animation
-        anim = animation.FuncAnimation(fig, update, frames=n,
-                                       interval=1000 / fps)
+
+        anim = animation.FuncAnimation(fig, update, frames=n, interval=1000 / fps)
         anim.save(save, fps=fps)
         print(f"saved {save}")
         return anim
@@ -116,12 +111,13 @@ def dashboard(sessions: list[SessionData], save: str | None = None, fps: int = 8
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider
 
-    cmap = _tyre_cmap()
+    opt_lo, opt_hi = sessions[0].opt_lo, sessions[0].opt_hi
+    cmap = tyre_cmap(opt_lo, opt_hi)
     layout = {"FL": (0, 0), "FR": (0, 1), "RL": (1, 0), "RR": (1, 1)}
     by_wheel = {s.wheel: s for s in sessions}
     n = min(len(s.grids) for s in sessions)
-    vmin = min(float(np.nanmin(s.grids)) for s in sessions)
-    vmax = max(float(np.nanmax(s.grids)) for s in sessions)
+    vmin = scale_lo(opt_lo, opt_hi)
+    vmax = scale_hi(opt_lo, opt_hi)
     base_ms = 1000.0 / max(1, sessions[0].sample_rate_hz)
 
     fig, axes = plt.subplots(2, 2, figsize=(9, 7))
@@ -138,11 +134,18 @@ def dashboard(sessions: list[SessionData], save: str | None = None, fps: int = 8
             continue
         ax.set_xticks(np.arange(s.grids.shape[2]))
         ax.tick_params(length=0, labelsize=7)
-        ims[wheel] = ax.imshow(s.grids[0], cmap=cmap, vmin=vmin, vmax=vmax,
-                               aspect="auto", interpolation="nearest")
+        ims[wheel] = ax.imshow(
+            s.grids[0],
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            aspect="auto",
+            interpolation="nearest",
+        )
 
-    fig.colorbar(next(iter(ims.values())), ax=axes.ravel().tolist(),
-                 fraction=0.025, label="°C")
+    fig.colorbar(
+        next(iter(ims.values())), ax=axes.ravel().tolist(), fraction=0.025, label="°C"
+    )
 
     def update(idx):
         i = int(idx)
@@ -158,8 +161,8 @@ def dashboard(sessions: list[SessionData], save: str | None = None, fps: int = 8
     update(0)
     if save:
         import matplotlib.animation as animation
-        anim = animation.FuncAnimation(fig, update, frames=n,
-                                       interval=1000 / fps)
+
+        anim = animation.FuncAnimation(fig, update, frames=n, interval=1000 / fps)
         anim.save(save, fps=fps)
         print(f"saved {save}")
         return anim
