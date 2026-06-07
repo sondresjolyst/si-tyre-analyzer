@@ -20,7 +20,7 @@ String pageRoot(const DeviceConfig &cfg);
 String pageSessions(const std::vector<SessionInfo> &sessions);
 
 // Live 2x2 tyre dashboard (master SoftAP; polls /api/live).
-String pageLive();
+String pageLive(const DeviceConfig &cfg);
 
 }  // namespace tyre
 

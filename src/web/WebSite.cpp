@@ -4,10 +4,12 @@
 
 #include <LittleFS.h>
 
+#include <cmath>
 #include <cstdio>
 #include <map>
 #include <vector>
 
+#include "display/Colormap.h"
 #include "web/Logo.h"
 
 #ifndef VERSION
@@ -51,8 +53,8 @@ background:linear-gradient(90deg,var(--border),transparent)}
 .card{background:var(--surface);border:1px solid var(--border);
 border-radius:14px;padding:16px}
 .card+.card{margin-top:12px}
-.lbl{display:block;font-size:12px;color:var(--muted);margin:15px 0 7px;
-text-transform:uppercase;letter-spacing:.07em}.lbl:first-child{margin-top:0}
+.lbl{display:block;font-size:12px;color:var(--muted);margin:22px 0 7px;
+text-transform:uppercase;letter-spacing:.07em}form>.lbl:first-child{margin-top:0}
 .hint{color:var(--muted2);font-size:11px;margin-top:9px;line-height:1.45}
 /* inputs */
 input[type=text],input[type=number]{width:100%;padding:11px 12px;
@@ -146,7 +148,7 @@ text-align:center;margin-top:8px;letter-spacing:.02em}
 .legend{margin:16px auto 0;max-width:320px}
 .legbar{height:12px;border-radius:6px;border:1px solid var(--border);
 background:linear-gradient(90deg,rgb(30,70,200) 0%,rgb(30,165,215) 20%,
-rgb(40,185,80) 40%,rgb(70,200,70) 62%,rgb(200,210,50) 72%,
+rgb(40,185,80) 40%,rgb(70,200,70) 60.6%,rgb(200,210,50) 70%,
 rgb(240,150,30) 85%,rgb(215,30,30) 100%)}
 .leglbl{display:flex;justify-content:space-between;
 font:600 11px/1 Consolas,'Cascadia Mono',monospace;color:var(--muted);
@@ -331,6 +333,22 @@ String pageRoot(const DeviceConfig &cfg) {
   }
   h += "</div>";
 
+  h += "<label class='lbl'>Optimal window low (\xC2\xB0"
+       "C)</label>"
+       "<input type='number' name='opt_lo' min='20' max='200' value='";
+  h += String(cfg.opt_lo);
+  h += "'>";
+  h += "<label class='lbl'>Optimal window high (\xC2\xB0"
+       "C)</label>"
+       "<input type='number' name='opt_hi' min='20' max='200' value='";
+  h += String(cfg.opt_hi);
+  h += "'>";
+  h += "<p class='hint'>Green band = optimal grip. Full scale auto-sets to " +
+       String(lroundf(scaleLoC(cfg.opt_lo, cfg.opt_hi))) + "\xE2\x80\x93" +
+       String(lroundf(scaleHiC(cfg.opt_lo, cfg.opt_hi))) +
+       "\xC2\xB0"
+       "C.</p>";
+
   h += "<button class='btn primary' type='submit' style='margin-top:16px'>"
        "Save setup</button></form></div></details>";
 
@@ -443,9 +461,11 @@ String pageSessions(const std::vector<SessionInfo> &sessions) {
   return h;
 }
 
-String pageLive() {
-  const String lo = String(kTempLoC), hi = String(kTempHiC);
-  const String mid = String((kTempLoC + kTempHiC) / 2);
+String pageLive(const DeviceConfig &cfg) {
+  const float loEnd = scaleLoC(cfg.opt_lo, cfg.opt_hi);
+  const float hiEnd = scaleHiC(cfg.opt_lo, cfg.opt_hi);
+  const String lo = String(lroundf(loEnd)), hi = String(lroundf(hiEnd));
+  const String mid = String(lroundf((loEnd + hiEnd) / 2.0f));
   String h = head("Live — SI Tyre Analyzer");
   h += "<div class='lgrid'>";
   for (const char *w : {"FL", "FR", "RL", "RR"}) {
@@ -470,7 +490,7 @@ String pageLive() {
   h += "<script>var LO=" + lo + ",HI=" + hi + ";";
   h +=
       "var RAMP=[[0,30,70,200],[.2,30,165,215],[.4,40,185,80],"
-      "[.62,70,200,70],[.72,200,210,50],[.85,240,150,30],[1,215,30,30]];"
+      "[.606,70,200,70],[.7,200,210,50],[.85,240,150,30],[1,215,30,30]];"
       "function color(t){var f=(t-LO)/(HI-LO);f=Math.max(0,Math.min(1,f));"
       "var i=0;while(i<RAMP.length-2&&f>RAMP[i+1][0])i++;"
       "var a=RAMP[i],b=RAMP[i+1],u=(f-a[0])/(b[0]-a[0]);"

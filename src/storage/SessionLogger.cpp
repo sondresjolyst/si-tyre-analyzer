@@ -6,6 +6,8 @@
 #include <ctype.h>
 
 #include <algorithm>
+#include <cstdio>
+#include <vector>
 
 #include "helpers/PRINTHelper.h"
 #include "processing/Downsample.h"
@@ -55,7 +57,8 @@ bool SessionLogger::begin() {
 bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
                                  uint8_t wheel, uint16_t rateHz,
                                  const uint8_t mac[6], const char *fwVer,
-                                 uint32_t groupId, const char *carName) {
+                                 uint32_t groupId, const char *carName,
+                                 uint8_t optLo, uint8_t optHi, uint8_t flags) {
   if (recording_)
     return false;
 
@@ -71,9 +74,9 @@ bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
   char slug[20];
   carSlug(carName, slug, sizeof(slug));
   char path[72];
-  snprintf(path, sizeof(path), "%s/%08lu_%s_%s_%lu.bin", kDir,
-           static_cast<unsigned long>(nextSeq()), slug, wheelName(wheel),
-           static_cast<unsigned long>(sessionId));
+  snprintf(path, sizeof(path), "%s/%08u_%s_%s_%u.bin", kDir,
+           static_cast<unsigned>(nextSeq()), slug, wheelName(wheel),
+           static_cast<unsigned>(sessionId));
   file_ = LittleFS.open(path, "w");
   if (!file_) {
     printHelper.log("ERROR", "open session file failed: %s", path);
@@ -95,6 +98,9 @@ bool SessionLogger::startSession(uint32_t sessionId, uint64_t startEpochMs,
     memcpy(h.device_mac, mac, 6);
   strncpy(h.fw_version, fwVer ? fwVer : "", sizeof(h.fw_version) - 1);
   strncpy(h.car_name, carName ? carName : "", sizeof(h.car_name) - 1);
+  h.opt_lo = optLo;
+  h.opt_hi = optHi;
+  h.flags = flags;
   h.record_count = 0;
 
   if (file_.write(reinterpret_cast<uint8_t *>(&h), sizeof(h)) != sizeof(h)) {
@@ -153,8 +159,8 @@ bool SessionLogger::endSession() {
   file_.flush();
   file_.close();
   recording_ = false;
-  printHelper.log("INFO", "session ended: %lu records",
-                  static_cast<unsigned long>(recordCount_));
+  printHelper.log("INFO", "session ended: %u records",
+                  static_cast<unsigned>(recordCount_));
   return true;
 }
 

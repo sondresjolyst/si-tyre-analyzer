@@ -16,6 +16,7 @@ extern WebServer server;
 namespace tyre {
 
 extern LiveDashboard gDashboard;
+extern DeviceConfig gConfig;
 
 // update() runs in the ESP-NOW recv callback (WiFi task); snapshot() runs in
 // the loop/WebServer task. Guard the shared per-wheel grid so the reader never
@@ -46,6 +47,8 @@ static void handleApiLive() {
   JsonDocument doc;
   doc["cols"] = kGridCols;
   doc["rows"] = kGridRows;
+  doc["opt_lo"] = gConfig.opt_lo;
+  doc["opt_hi"] = gConfig.opt_hi;
   JsonObject wheels = doc["wheels"].to<JsonObject>();
   const uint32_t now = millis();
   for (int i = 0; i < 4; i++) {
@@ -64,7 +67,7 @@ static void handleApiLive() {
   server.send(200, "application/json", out);
 }
 
-static void handleLive() { server.send(200, "text/html", pageLive()); }
+static void handleLive() { server.send(200, "text/html", pageLive(gConfig)); }
 
 void registerLiveRoutes() {
   server.on("/live", HTTP_GET, handleLive);

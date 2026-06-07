@@ -30,7 +30,7 @@ class RecordingController {
   // Start a session. wheel/mac/fwVer/groupId go into the file header.
   bool start(uint32_t sessionId, uint64_t startEpochMs, uint8_t wheel,
              const uint8_t mac[6], const char *fwVer, uint32_t groupId,
-             const char *carName);
+             const char *carName, uint8_t optLo, uint8_t optHi);
 
   void stop();
 

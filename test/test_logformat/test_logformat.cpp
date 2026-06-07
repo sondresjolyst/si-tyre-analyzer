@@ -12,7 +12,15 @@
 #include "processing/Downsample.h"
 #include "storage/LogFormat.h"
 
-using namespace tyre;
+using tyre::kTempScale;
+using tyre::LOG_FLAG_FLIP_X;
+using tyre::LOG_FLAG_MOCK;
+using tyre::LOG_MAGIC;
+using tyre::LOG_VERSION;
+using tyre::LogHeader;
+using tyre::recordStride;
+using tyre::scaleTemp;
+using tyre::unscaleTemp;
 
 void setUp() {}
 void tearDown() {}
@@ -41,6 +49,9 @@ void test_build_and_parse() {
   h.temp_scale = kTempScale;
   h.session_id = 0xDEADBEEF;
   h.group_id = 0x1234;
+  h.opt_lo = 80;
+  h.opt_hi = 95;
+  h.flags = LOG_FLAG_FLIP_X | LOG_FLAG_MOCK;
   h.record_count = 0;  // not finalised
 
   std::vector<uint8_t> buf(sizeof(LogHeader) + 2 * stride, 0);
@@ -50,7 +61,8 @@ void test_build_and_parse() {
     uint32_t t = static_cast<uint32_t>(rec * 250);
     std::memcpy(p, &t, 4);
     int16_t *temps = reinterpret_cast<int16_t *>(p + 4);
-    for (int i = 0; i < cells; i++) temps[i] = scaleTemp(20.0f + rec + i);
+    for (int i = 0; i < cells; i++)
+      temps[i] = scaleTemp(20.0f + rec + i);
   }
 
   LogHeader rh;
@@ -59,6 +71,9 @@ void test_build_and_parse() {
   TEST_ASSERT_EQUAL_UINT8(cols, rh.grid_cols);
   TEST_ASSERT_EQUAL_UINT8(rows, rh.grid_rows);
   TEST_ASSERT_EQUAL_HEX32(0xDEADBEEF, rh.session_id);
+  TEST_ASSERT_EQUAL_UINT8(80, rh.opt_lo);
+  TEST_ASSERT_EQUAL_UINT8(95, rh.opt_hi);
+  TEST_ASSERT_EQUAL_UINT8(LOG_FLAG_FLIP_X | LOG_FLAG_MOCK, rh.flags);
 
   // record_count==0 -> recover from filesize
   size_t recovered = (buf.size() - sizeof(LogHeader)) / stride;

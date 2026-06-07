@@ -157,6 +157,10 @@ static void handleConfig() {
     gConfig.flip_y = server.arg("flip_y").toInt() ? 1 : 0;
   if (server.hasArg("channel"))
     gConfig.channel = static_cast<uint8_t>(server.arg("channel").toInt());
+  if (server.hasArg("opt_lo"))
+    gConfig.opt_lo = static_cast<uint8_t>(server.arg("opt_lo").toInt());
+  if (server.hasArg("opt_hi"))
+    gConfig.opt_hi = static_cast<uint8_t>(server.arg("opt_hi").toInt());
   if (server.hasArg("group_id"))
     gConfig.group_id = static_cast<uint32_t>(server.arg("group_id").toInt());
   if (server.hasArg("car_name")) {

@@ -87,6 +87,8 @@ const uint16_t kTxt = tyre::toRgb565(tyre::Rgb{0xf3, 0xf4, 0xf6});
 
 namespace tyre {
 
+extern DeviceConfig gConfig;
+
 bool DisplayController::begin() {
   if (!gfx.init())
     return false;
@@ -137,15 +139,15 @@ void DisplayController::drawCell(int slot, const int16_t *temps, bool valid) {
   }
 
   const int mapX = tx + 4, mapY = ty + 14, mapW = tw - 8, mapH = th - 20;
-  const float lo = static_cast<float>(kTempLoC);
-  const float hi = static_cast<float>(kTempHiC);
+  const float optLo = static_cast<float>(gConfig.opt_lo);
+  const float optHi = static_cast<float>(gConfig.opt_hi);
   for (int r = 0; r < kRows; r++) {
     const int y0 = mapY + r * mapH / kRows, y1 = mapY + (r + 1) * mapH / kRows;
     for (int c = 0; c < kCols; c++) {
       const int x0 = mapX + c * mapW / kCols,
                 x1 = mapX + (c + 1) * mapW / kCols;
       float t = temps[r * kCols + c] / kScale;
-      gfx.fillRect(x0, y0, x1 - x0, y1 - y0, heatRgb565(t, lo, hi));
+      gfx.fillRect(x0, y0, x1 - x0, y1 - y0, heatRgb565(t, optLo, optHi));
     }
   }
 
