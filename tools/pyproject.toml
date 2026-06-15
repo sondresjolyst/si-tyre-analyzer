@@ -1,6 +1,6 @@
 [project]
 name = "si-tyre-analyzer"
-version = "0.3.0"
+version = "0.4.0"
 description = "View and analyse tyre temperature recordings from SI Tyre Analyzer"
 requires-python = ">=3.10"
 dependencies = [
