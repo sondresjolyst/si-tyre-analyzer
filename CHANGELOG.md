@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.4.0...si-tyre-analyzer-v0.5.0) (2026-06-15)
+
+
+### Features
+
+* configurable optimal tyre temperature window ([#34](https://github.com/sondresjolyst/si-tyre-analyzer/issues/34)) ([b3b5299](https://github.com/sondresjolyst/si-tyre-analyzer/commit/b3b529906df3ff64a0d683e8c61845ffa945a692))
+* redesign device web UI and TFT live view; unify heat scale ([#32](https://github.com/sondresjolyst/si-tyre-analyzer/issues/32)) ([8755f24](https://github.com/sondresjolyst/si-tyre-analyzer/commit/8755f24df01b26e0f5ef9b4f0909e047c884d9d8))
+
 ## [0.4.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.3.0...si-tyre-analyzer-v0.4.0) (2026-06-02)
 
 
