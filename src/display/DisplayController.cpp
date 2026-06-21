@@ -70,6 +70,7 @@ class LGFX : public lgfx::LGFX_Device {
 };
 
 LGFX gfx;
+LGFX_Sprite cell(&gfx);
 
 constexpr int kCols = tyre::kGridCols;
 constexpr int kRows = tyre::kGridRows;
@@ -94,6 +95,8 @@ bool DisplayController::begin() {
     return false;
   gfx.setRotation(1);
   gfx.fillScreen(kBg);
+  cell.setColorDepth(16);
+  cell.createSprite(kCellW, kCellH);
   ready_ = true;
   return true;
 }
@@ -120,21 +123,20 @@ void DisplayController::render(const LiveDashboard &dash) {
 }
 
 void DisplayController::drawCell(int slot, const int16_t *temps, bool valid) {
-  const int x = (slot % 2) * kCellW;
-  const int y = (slot / 2) * kCellH;
   const int m = 2;
-  const int tx = x + m, ty = y + m, tw = kCellW - 2 * m, th = kCellH - 2 * m;
+  const int tx = m, ty = m, tw = kCellW - 2 * m, th = kCellH - 2 * m;
 
-  gfx.fillRect(x, y, kCellW, kCellH, kBg);
-  gfx.fillRoundRect(tx, ty, tw, th, 6, kTile);
+  cell.fillScreen(kBg);
+  cell.fillRoundRect(tx, ty, tw, th, 6, kTile);
 
-  gfx.fillCircle(tx + tw - 9, ty + 8, 4, valid ? kGrn : kMuted);
+  cell.fillCircle(tx + tw - 9, ty + 8, 4, valid ? kGrn : kMuted);
 
   if (!valid) {
-    gfx.setTextColor(kMuted, kTile);
-    gfx.setTextSize(2);
-    gfx.setCursor(tx + tw / 2 - 12, ty + th / 2 - 8);
-    gfx.print("--");
+    cell.setTextColor(kMuted, kTile);
+    cell.setTextSize(2);
+    cell.setCursor(tx + tw / 2 - 12, ty + th / 2 - 8);
+    cell.print("--");
+    cell.pushSprite((slot % 2) * kCellW, (slot / 2) * kCellH);
     return;
   }
 
@@ -147,7 +149,7 @@ void DisplayController::drawCell(int slot, const int16_t *temps, bool valid) {
       const int x0 = mapX + c * mapW / kCols,
                 x1 = mapX + (c + 1) * mapW / kCols;
       float t = temps[r * kCols + c] / kScale;
-      gfx.fillRect(x0, y0, x1 - x0, y1 - y0, heatRgb565(t, optLo, optHi));
+      cell.fillRect(x0, y0, x1 - x0, y1 - y0, heatRgb565(t, optLo, optHi));
     }
   }
 
@@ -166,18 +168,19 @@ void DisplayController::drawCell(int slot, const int16_t *temps, bool valid) {
   const float zs = 2.3f;
   const int gw = static_cast<int>(6 * zs + 0.5f);
   const int gh = static_cast<int>(8 * zs + 0.5f);
-  gfx.setTextSize(zs);
+  cell.setTextSize(zs);
   for (int z = 0; z < 3; z++) {
     char buf[6];
     snprintf(buf, sizeof(buf), "%d", zone[z]);
     const int chipW = gw * static_cast<int>(strlen(buf)) + 6, chipH = gh + 4;
     const int cx = mapX + mapW * (2 * z + 1) / 6;
     const int bx = cx - chipW / 2, by = cy - chipH / 2;
-    gfx.fillRoundRect(bx, by, chipW, chipH, 3, kBg);
-    gfx.setTextColor(kTxt, kBg);
-    gfx.setCursor(bx + 3, by + 2);
-    gfx.print(buf);
+    cell.fillRoundRect(bx, by, chipW, chipH, 3, kBg);
+    cell.setTextColor(kTxt, kBg);
+    cell.setCursor(bx + 3, by + 2);
+    cell.print(buf);
   }
+  cell.pushSprite((slot % 2) * kCellW, (slot / 2) * kCellH);
 }
 
 }  // namespace tyre
