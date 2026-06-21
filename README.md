@@ -169,11 +169,10 @@ uv run sita dashboard  ~/Documents/SI\ Tyre\ Analyzer
 uv run sita fetch --host 192.168.4.1 --all --dest ~/Documents/SI\ Tyre\ Analyzer
 ```
 
-### Tests
+### Testing
 
-- Native unit tests: `pio test -e native_downsample -e native_logformat -e native_version`
-  (needs a host C++ compiler).
-- Python contract test: `cd tools && uv run pytest`.
+See [docs/testing.md](docs/testing.md) — mocks for hardware-free testing, plus
+unit and contract tests.
 
 ### Notes
 
