@@ -38,6 +38,9 @@
 #define STATUS_LED_PIN 2  // override per board (S3 DevKitC RGB is on 48)
 #endif
 #define BUTTON_PIN 0
+#ifndef EFUSE_FLT_PIN
+#define EFUSE_FLT_PIN 10  // TPS26600 FLT: open-drain active-low, 100k to 3V3
+#endif
 
 DNSServer dnsServer;
 WebServer server(80);
@@ -155,6 +158,12 @@ static void toggleRecording() {
     appState = STATE_RECORDING;  // master tracks session even without a sensor
   }
   startLocalSession(sessionId, gConfig.opt_lo, gConfig.opt_hi);
+}
+
+// Non-static so the web layer (FileServerController) can drive recording.
+void uiToggleRecording() { toggleRecording(); }
+bool uiRecording() {
+  return recorder.isRecording() || appState == STATE_RECORDING;
 }
 
 static void enterPairing() {
@@ -483,6 +492,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(STATUS_LED_PIN, OUTPUT);
   setLed(false);
+  pinMode(EFUSE_FLT_PIN, INPUT);  // ext 100k pull-up to 3V3; LOW = tripped
 
   tyre::loadConfig(&gConfig);
   gLogger.begin();
@@ -545,6 +555,20 @@ void setup() {
   }
 }
 
+// ── 12 V eFuse fault (TPS26600 FLT, active-low) ──────────────────────────────
+static bool gEfuseFaulted = false;
+static void pollEfuseFault() {
+  // FLT is open-drain, pulled to 3V3; LOW = eFuse tripped (over-current,
+  // over-voltage, or thermal). The -00 variant auto-retries, so it self-clears.
+  const bool faulted = (digitalRead(EFUSE_FLT_PIN) == LOW);
+  if (faulted == gEfuseFaulted)
+    return;
+  gEfuseFaulted = faulted;
+  printHelper.log(faulted ? "WARN" : "INFO",
+                  faulted ? "12V input eFuse fault (FLT low)"
+                          : "12V input eFuse recovered");
+}
+
 // ── Loop ─────────────────────────────────────────────────────────────────────
 void loop() {
   button.update();
@@ -554,6 +578,7 @@ void loop() {
   gEsp.update();
   pollSerial();
   updateLed();
+  pollEfuseFault();
 #if HAS_DISPLAY
   if (gConfig.role == tyre::ROLE_MASTER && gConfig.has_display)
     tyre::gDisplay.render(gDashboard);
