@@ -166,6 +166,12 @@ bool uiRecording() {
   return recorder.isRecording() || appState == STATE_RECORDING;
 }
 
+// Fill `out` with a native-resolution frame (tyre::MLX_PIXELS values) for the
+// alignment view. False if this unit has no sensor or a frame can't be read.
+bool uiReadAlignFrame(int16_t *out) {
+  return gConfig.has_sensor && recorder.readAlignFrame(out);
+}
+
 static void enterPairing() {
   gEsp.enterPairing();
   appState = STATE_PAIRING;
