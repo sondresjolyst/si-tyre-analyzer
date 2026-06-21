@@ -39,7 +39,7 @@
 #endif
 #define BUTTON_PIN 0
 #ifndef EFUSE_FLT_PIN
-#define EFUSE_FLT_PIN 10  // TPS26600 FLT (open-drain, active-low) → 100k pull-up to 3V3
+#define EFUSE_FLT_PIN 10  // TPS26600 FLT: open-drain active-low, 100k to 3V3
 #endif
 
 DNSServer dnsServer;
@@ -492,7 +492,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(STATUS_LED_PIN, OUTPUT);
   setLed(false);
-  pinMode(EFUSE_FLT_PIN, INPUT);  // external 100k pull-up to 3V3; LOW = eFuse tripped
+  pinMode(EFUSE_FLT_PIN, INPUT);  // ext 100k pull-up to 3V3; LOW = tripped
 
   tyre::loadConfig(&gConfig);
   gLogger.begin();

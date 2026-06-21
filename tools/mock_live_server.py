@@ -28,6 +28,8 @@ def grid(base: float, t: float) -> list[float]:
 
 
 class Handler(BaseHTTPRequestHandler):
+    """Serve a synthetic /api/live frame for each request."""
+
     def do_GET(self):
         if self.path != "/api/live":
             self.send_error(404)
