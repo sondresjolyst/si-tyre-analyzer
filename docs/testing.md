@@ -19,5 +19,4 @@ Two mocks let you exercise the firmware and web UI with no MLX90640 attached:
 ## Automated tests
 
 - Native unit tests: `pio test -e native_downsample -e native_logformat -e native_version`
-  (needs a host C++ compiler).
 - Python contract test: `cd tools && uv run pytest`.
