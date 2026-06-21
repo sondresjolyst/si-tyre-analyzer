@@ -43,6 +43,11 @@ class RecordingController {
   const int16_t *lastScaledGrid() const { return scaled_; }
   uint32_t lastSampleOffsetMs() const { return lastOffsetMs_; }
 
+  // Read one native-resolution frame (MLX_PIXELS, flip applied, scaled) for the
+  // sensor-alignment view. Refuses (returns false) while recording so it never
+  // races the sampler on the I2C bus; also false if the frame read fails.
+  bool readAlignFrame(int16_t *out);
+
  private:
   ITempSensor *sensor_;
   SessionLogger *logger_;

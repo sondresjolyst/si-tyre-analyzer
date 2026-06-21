@@ -39,6 +39,17 @@ bool RecordingController::start(uint32_t sessionId, uint64_t startEpochMs,
   return true;
 }
 
+bool RecordingController::readAlignFrame(int16_t *out) {
+  if (logger_->isRecording())  // never share the I2C bus with the sampler
+    return false;
+  if (!sensor_->readFrame(frame_))
+    return false;
+  applyFlip(frame_, MLX_W, MLX_H, flipX_, flipY_);
+  for (int i = 0; i < MLX_PIXELS; i++)
+    out[i] = scaleTemp(frame_[i]);
+  return true;
+}
+
 void RecordingController::stop() {
   if (logger_->isRecording())
     logger_->endSession();

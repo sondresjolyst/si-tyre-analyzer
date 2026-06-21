@@ -22,6 +22,10 @@ String pageSessions(const std::vector<SessionInfo> &sessions);
 // Live 2x2 tyre dashboard (master SoftAP; polls /api/live).
 String pageLive(const DeviceConfig &cfg);
 
+// Native-resolution single-tyre heatmap for sensor alignment (polls /api/align;
+// served by any unit that has a sensor).
+String pageAlign(const DeviceConfig &cfg);
+
 }  // namespace tyre
 
 #endif  // SRC_WEB_WEBSITE_H_

@@ -235,6 +235,8 @@ String pageRoot(const DeviceConfig &cfg) {
     }
     h += "</div>";
   }
+  if (cfg.has_sensor)
+    h += "<a class='btn' href='/align'>Align sensor</a>";
   h += "<a class='btn' href='/sessions'>View recorded sessions</a>";
 
   h += "<div class='sec'>Pairing</div><div class='card'>";
@@ -529,6 +531,68 @@ String pageLive(const DeviceConfig &cfg) {
       "dot.className='dot'+(o.age_ms<2000?' on':'');}"
       "else{dot.className='dot';}});}).catch(()=>{});}"
       "setInterval(tick,500);tick();</script>";
+
+  h += "</div></body></html>";
+  return h;
+}
+
+String pageAlign(const DeviceConfig &cfg) {
+  String h = head("Align — SI Tyre Analyzer");
+
+  h += "<div class='tyre'><div class='th'><span>";
+  h += wheelName(cfg.wheel);
+  h += " sensor</span><span class='dot' id='dA'></span></div>";
+  // Crosshair overlay marks the sensor centre so the tyre tread can be aimed.
+  h += "<div style='position:relative;width:100%;max-width:480px;"
+       "margin:0 auto'>"
+       "<div class='heat' id='A' style='width:100%;aspect-ratio:32/24'></div>"
+       "<div style='position:absolute;left:50%;top:0;bottom:0;width:1px;"
+       "background:rgba(255,255,255,.55);pointer-events:none'></div>"
+       "<div style='position:absolute;top:50%;left:0;right:0;height:1px;"
+       "background:rgba(255,255,255,.55);pointer-events:none'></div></div>";
+  h += "<div class='stat' id='sA'>\xE2\x80\x94</div></div>";
+
+  // Legend auto-scales to each frame's own range, so cold tyres still show
+  // edge contrast instead of washing out against the fixed optimal window.
+  h += "<div class='legend'><div class='legbar'></div><div class='leglbl'>"
+       "<span id='lgL'>\xE2\x80\x94</span><span id='lgM'>\xE2\x80\x94</span>"
+       "<span id='lgH'>\xE2\x80\x94</span></div></div>";
+  h += "<a class='btn' href='/' style='margin-top:18px'>"
+       "\xE2\x86\x90 Back</a>";
+
+  h += "<script>";
+  h +=
+      "var RAMP=[[0,30,70,200],[.2,30,165,215],[.4,40,185,80],"
+      "[.606,70,200,70],[.7,200,210,50],[.85,240,150,30],[1,215,30,30]];"
+      "function color(t,lo,hi){var f=(t-lo)/(hi-lo);"
+      "f=Math.max(0,Math.min(1,f));"
+      "var i=0;while(i<RAMP.length-2&&f>RAMP[i+1][0])i++;"
+      "var a=RAMP[i],b=RAMP[i+1],u=(f-a[0])/(b[0]-a[0]);"
+      "return 'rgb('+Math.round(a[1]+(b[1]-a[1])*u)+','"
+      "+Math.round(a[2]+(b[2]-a[2])*u)+','+Math.round(a[3]+(b[3]-a[3])*u)+')';}"
+      "function tick(){fetch('/api/align').then(r=>r.json()).then(d=>{"
+      "var el=document.getElementById('A');"
+      "var dot=document.getElementById('dA');"
+      "var st=document.getElementById('sA');"
+      "if(!d.temps){dot.className='dot';"
+      "st.textContent=d.err||'no frame';return;}"
+      "if(el.children.length!=d.cols*d.rows){el.innerHTML='';"
+      "el.style.gridTemplateColumns='repeat('+d.cols+',1fr)';"
+      "for(var i=0;i<d.cols*d.rows;i++){var c=document.createElement('div');"
+      "c.className='cell';el.appendChild(c);}}"
+      "var t=d.temps,mn=Math.min.apply(null,t),mx=Math.max.apply(null,t),"
+      "av=t.reduce(function(a,b){return a+b;},0)/t.length;"
+      "var lo=mn,hi=(mx>mn)?mx:mn+1;"  // auto-range; guard flat frame
+      "for(var i=0;i<t.length;i++)"
+      "el.children[i].style.background=color(t[i],lo,hi);"
+      "document.getElementById('lgL').textContent=Math.round(mn)+'\\u00B0';"
+      "document.getElementById('lgM').textContent="
+      "Math.round((mn+mx)/2)+'\\u00B0';"
+      "document.getElementById('lgH').textContent=Math.round(mx)+'\\u00B0';"
+      "st.textContent='min '+Math.round(mn)+'\\u00B0  avg '+Math.round(av)+"
+      "'\\u00B0  max '+Math.round(mx)+'\\u00B0';dot.className='dot on';"
+      "}).catch(()=>{document.getElementById('dA').className='dot';});}"
+      "setInterval(tick,250);tick();</script>";
 
   h += "</div></body></html>";
   return h;

@@ -13,6 +13,8 @@
 #include "config/Settings.h"
 #include "controllers/EspNowController.h"
 #include "helpers/PRINTHelper.h"
+#include "processing/Downsample.h"
+#include "sensor/SensorTypes.h"
 #include "storage/SessionLogger.h"
 #include "web/WebSite.h"
 
@@ -24,6 +26,7 @@ extern WebServer server;
 extern PRINTHelper printHelper;
 void uiToggleRecording();
 bool uiRecording();
+bool uiReadAlignFrame(int16_t *out);
 
 namespace tyre {
 
@@ -323,6 +326,30 @@ static void handleRec() {  // GET reads state, POST toggles (master only)
   server.send(200, "application/json", out);
 }
 
+static void handleAlignPage() {
+  server.send(200, "text/html", pageAlign(gConfig));
+}
+
+// Native-resolution thermal frame from this unit's own sensor, for alignment.
+static void handleApiAlign() {
+  static int16_t buf[MLX_PIXELS];
+  if (!::uiReadAlignFrame(buf)) {
+    server.send(503, "application/json", "{\"err\":\"no frame\"}");
+    return;
+  }
+  JsonDocument doc;
+  doc["cols"] = MLX_W;
+  doc["rows"] = MLX_H;
+  doc["opt_lo"] = gConfig.opt_lo;
+  doc["opt_hi"] = gConfig.opt_hi;
+  JsonArray t = doc["temps"].to<JsonArray>();
+  for (int i = 0; i < MLX_PIXELS; i++)
+    t.add(unscaleTemp(buf[i]));
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+
 void registerFileServerRoutes() {
   server.onNotFound(handleNotFound);
   server.on("/connecttest.txt", HTTP_GET, handleConnectTest);
@@ -344,6 +371,8 @@ void registerFileServerRoutes() {
   server.on("/api/peers", HTTP_GET, handleApiPeers);
   server.on("/api/rec", HTTP_GET, handleRec);
   server.on("/api/rec", HTTP_POST, handleRec);
+  server.on("/align", HTTP_GET, handleAlignPage);
+  server.on("/api/align", HTTP_GET, handleApiAlign);
   server.on("/fw-upload", HTTP_POST, handleFwUploadDone, handleFwUpload);
   server.on("/fw.bin", HTTP_GET, handleFwBin);
   server.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
