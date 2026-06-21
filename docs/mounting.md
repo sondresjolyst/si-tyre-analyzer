@@ -36,13 +36,15 @@ changes the covered width, so fine-tune the angle once it is roughly in place.
 
 ## Aiming
 
-1. Power up the car and the wheel units.
-2. In the app, open **Live** and connect to the master.
-3. Turn on **Alignment guides**. Each wheel shows inner / middle / outer band
-   labels and a centre line.
-4. Warm the tyre (a heat gun or a few laps) so there is contrast.
-5. Adjust each sensor until the warm tread fills the frame left to right and
-   sits centred on the middle band.
+Each unit serves a live **alignment view** on its own Wi-Fi, showing a
+full-resolution thermal image. The colour scale adapts to each frame, so a cold
+tyre still shows clear tread edges.
+
+1. Join the unit's Wi-Fi (`SITA <wheel> <Car ID>`), open `http://192.168.4.1`,
+   tap **Align sensor**.
+2. Aim so the tread fills the frame left to right, centred on the crosshair.
+
+Repeat per wheel.
 
 ## Orientation (flip)
 
