@@ -72,6 +72,7 @@ background:transparent;color:var(--txt);border:1px solid var(--border)}
 .btn+.btn{margin-top:10px}
 .btn.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
 .btn.primary:hover{background:var(--acch)}
+.btn.primary.rec{background:var(--red);border-color:var(--red);color:#1a0a0a}
 .btn.danger{background:rgba(248,113,113,.12);color:var(--red);
 border-color:rgba(248,113,113,.4)}
 .btn.lg{padding:18px;font-size:16px;letter-spacing:.08em}
@@ -217,6 +218,8 @@ String pageRoot(const DeviceConfig &cfg) {
   h += "</span></div>";
 
   if (master) {
+    h += "<button class='btn primary lg' id='recBtn' onclick='toggleRec()'>"
+         "\xE2\x97\x8F Start recording</button>";
     h += "<a class='btn primary lg' href='/live'>Open live dashboard</a>";
   } else {
     h += "<div class='card'>";
@@ -397,7 +400,16 @@ String pageRoot(const DeviceConfig &cfg) {
       "'No wheels paired yet.';if(d.pairing)t+='  (pairing…)';"
       "el.textContent=t;}).catch(()=>{});}"
       "if(document.getElementById('paired')){pollPeers();"
-      "setInterval(pollPeers,2000);}</script>";
+      "setInterval(pollPeers,2000);}"
+      "function setRec(r){var b=document.getElementById('recBtn');if(!b)return;"
+      "b.innerHTML=r?'\\u25A0 Stop recording':'\\u25CF Start recording';"
+      "b.classList.toggle('rec',r);}"
+      "function pollRec(){fetch('/api/rec').then(r=>r.json())"
+      ".then(d=>setRec(d.rec)).catch(()=>{});}"
+      "function toggleRec(){fetch('/api/rec',{method:'POST'}).then(r=>r.json())"
+      ".then(d=>setRec(d.rec)).catch(()=>{});}"
+      "if(document.getElementById('recBtn')){pollRec();"
+      "setInterval(pollRec,2000);}</script>";
 
   h += "</div></body></html>";
   return h;
