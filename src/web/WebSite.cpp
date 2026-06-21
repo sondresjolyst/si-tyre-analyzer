@@ -236,7 +236,7 @@ String pageRoot(const DeviceConfig &cfg) {
     h += "</div>";
   }
   if (cfg.has_sensor)
-    h += "<a class='btn' href='/align'>Align sensor (live)</a>";
+    h += "<a class='btn' href='/align'>Align sensor</a>";
   h += "<a class='btn' href='/sessions'>View recorded sessions</a>";
 
   h += "<div class='sec'>Pairing</div><div class='card'>";
@@ -537,10 +537,6 @@ String pageLive(const DeviceConfig &cfg) {
 }
 
 String pageAlign(const DeviceConfig &cfg) {
-  const float loEnd = scaleLoC(cfg.opt_lo, cfg.opt_hi);
-  const float hiEnd = scaleHiC(cfg.opt_lo, cfg.opt_hi);
-  const String lo = String(lroundf(loEnd)), hi = String(lroundf(hiEnd));
-  const String mid = String(lroundf((loEnd + hiEnd) / 2.0f));
   String h = head("Align — SI Tyre Analyzer");
 
   h += "<div class='tyre'><div class='th'><span>";
@@ -556,18 +552,20 @@ String pageAlign(const DeviceConfig &cfg) {
        "background:rgba(255,255,255,.55);pointer-events:none'></div></div>";
   h += "<div class='stat' id='sA'>\xE2\x80\x94</div></div>";
 
+  // Legend auto-scales to each frame's own range, so cold tyres still show
+  // edge contrast instead of washing out against the fixed optimal window.
   h += "<div class='legend'><div class='legbar'></div><div class='leglbl'>"
-       "<span>" +
-       lo + "\xC2\xB0</span><span>" + mid + "\xC2\xB0</span><span>" + hi +
-       "\xC2\xB0</span></div></div>";
+       "<span id='lgL'>\xE2\x80\x94</span><span id='lgM'>\xE2\x80\x94</span>"
+       "<span id='lgH'>\xE2\x80\x94</span></div></div>";
   h += "<a class='btn' href='/' style='margin-top:18px'>"
        "\xE2\x86\x90 Back</a>";
 
-  h += "<script>var LO=" + lo + ",HI=" + hi + ";";
+  h += "<script>";
   h +=
       "var RAMP=[[0,30,70,200],[.2,30,165,215],[.4,40,185,80],"
       "[.606,70,200,70],[.7,200,210,50],[.85,240,150,30],[1,215,30,30]];"
-      "function color(t){var f=(t-LO)/(HI-LO);f=Math.max(0,Math.min(1,f));"
+      "function color(t,lo,hi){var f=(t-lo)/(hi-lo);"
+      "f=Math.max(0,Math.min(1,f));"
       "var i=0;while(i<RAMP.length-2&&f>RAMP[i+1][0])i++;"
       "var a=RAMP[i],b=RAMP[i+1],u=(f-a[0])/(b[0]-a[0]);"
       "return 'rgb('+Math.round(a[1]+(b[1]-a[1])*u)+','"
@@ -582,10 +580,15 @@ String pageAlign(const DeviceConfig &cfg) {
       "el.style.gridTemplateColumns='repeat('+d.cols+',1fr)';"
       "for(var i=0;i<d.cols*d.rows;i++){var c=document.createElement('div');"
       "c.className='cell';el.appendChild(c);}}"
-      "for(var i=0;i<d.temps.length;i++)"
-      "el.children[i].style.background=color(d.temps[i]);"
       "var t=d.temps,mn=Math.min.apply(null,t),mx=Math.max.apply(null,t),"
       "av=t.reduce(function(a,b){return a+b;},0)/t.length;"
+      "var lo=mn,hi=(mx>mn)?mx:mn+1;"  // auto-range; guard flat frame
+      "for(var i=0;i<t.length;i++)"
+      "el.children[i].style.background=color(t[i],lo,hi);"
+      "document.getElementById('lgL').textContent=Math.round(mn)+'\\u00B0';"
+      "document.getElementById('lgM').textContent="
+      "Math.round((mn+mx)/2)+'\\u00B0';"
+      "document.getElementById('lgH').textContent=Math.round(mx)+'\\u00B0';"
       "st.textContent='min '+Math.round(mn)+'\\u00B0  avg '+Math.round(av)+"
       "'\\u00B0  max '+Math.round(mx)+'\\u00B0';dot.className='dot on';"
       "}).catch(()=>{document.getElementById('dA').className='dot';});}"
