@@ -19,9 +19,9 @@ permissions: {}
 jobs:
   lint-codebase:
     name: Lint codebase
-    uses: equinor/ops-actions/.github/workflows/super-linter.yml@c1be86e02c64b0d2db5c2dba532b5580cdce168d
+    uses: equinor/ops-actions/.github/workflows/super-linter.yml@792c28d178029e9d2b5ae027e3acbe18da89e9ed
     permissions:
       contents: read
       statuses: write
     with:
-      filter_regex_exclude: (.*CHANGELOG\.md$|docs/workflows/.*|lib/.*|tools/live_preview\.html$)
+      filter_regex_exclude: (.*CHANGELOG\.md$|docs/workflows/.*|lib/.*|tools/.*_preview\.html$)

@@ -13,6 +13,8 @@
 #include "config/Settings.h"
 #include "controllers/EspNowController.h"
 #include "helpers/PRINTHelper.h"
+#include "processing/Downsample.h"
+#include "sensor/SensorTypes.h"
 #include "storage/SessionLogger.h"
 #include "web/WebSite.h"
 
@@ -22,6 +24,9 @@
 
 extern WebServer server;
 extern PRINTHelper printHelper;
+void uiToggleRecording();
+bool uiRecording();
+bool uiReadAlignFrame(int16_t *out);
 
 namespace tyre {
 
@@ -157,6 +162,10 @@ static void handleConfig() {
     gConfig.flip_y = server.arg("flip_y").toInt() ? 1 : 0;
   if (server.hasArg("channel"))
     gConfig.channel = static_cast<uint8_t>(server.arg("channel").toInt());
+  if (server.hasArg("opt_lo"))
+    gConfig.opt_lo = static_cast<uint8_t>(server.arg("opt_lo").toInt());
+  if (server.hasArg("opt_hi"))
+    gConfig.opt_hi = static_cast<uint8_t>(server.arg("opt_hi").toInt());
   if (server.hasArg("group_id"))
     gConfig.group_id = static_cast<uint32_t>(server.arg("group_id").toInt());
   if (server.hasArg("car_name")) {
@@ -307,6 +316,40 @@ static void handleAppleSuccess() {
       "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
 }
 
+static void handleRec() {  // GET reads state, POST toggles (master only)
+  if (server.method() == HTTP_POST)
+    ::uiToggleRecording();
+  JsonDocument doc;
+  doc["rec"] = ::uiRecording();
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+
+static void handleAlignPage() {
+  server.send(200, "text/html", pageAlign(gConfig));
+}
+
+// Native-resolution thermal frame from this unit's own sensor, for alignment.
+static void handleApiAlign() {
+  static int16_t buf[MLX_PIXELS];
+  if (!::uiReadAlignFrame(buf)) {
+    server.send(503, "application/json", "{\"err\":\"no frame\"}");
+    return;
+  }
+  JsonDocument doc;
+  doc["cols"] = MLX_W;
+  doc["rows"] = MLX_H;
+  doc["opt_lo"] = gConfig.opt_lo;
+  doc["opt_hi"] = gConfig.opt_hi;
+  JsonArray t = doc["temps"].to<JsonArray>();
+  for (int i = 0; i < MLX_PIXELS; i++)
+    t.add(unscaleTemp(buf[i]));
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+
 void registerFileServerRoutes() {
   server.onNotFound(handleNotFound);
   server.on("/connecttest.txt", HTTP_GET, handleConnectTest);
@@ -326,6 +369,10 @@ void registerFileServerRoutes() {
   server.on("/car", HTTP_POST, handleSetCar);
   server.on("/car/new", HTTP_POST, handleNewCar);
   server.on("/api/peers", HTTP_GET, handleApiPeers);
+  server.on("/api/rec", HTTP_GET, handleRec);
+  server.on("/api/rec", HTTP_POST, handleRec);
+  server.on("/align", HTTP_GET, handleAlignPage);
+  server.on("/api/align", HTTP_GET, handleApiAlign);
   server.on("/fw-upload", HTTP_POST, handleFwUploadDone, handleFwUpload);
   server.on("/fw.bin", HTTP_GET, handleFwBin);
   server.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);

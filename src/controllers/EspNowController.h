@@ -63,6 +63,8 @@ struct StartMsg {
   uint16_t rate_hz;
   uint8_t cols;
   uint8_t rows;
+  uint8_t opt_lo;
+  uint8_t opt_hi;
 };
 
 struct StopMsg {
@@ -80,7 +82,8 @@ struct LiveGridMsg {
 
 class EspNowController {
  public:
-  typedef void (*StartCb)(uint32_t sessionId, uint16_t rateHz);
+  typedef void (*StartCb)(uint32_t sessionId, uint16_t rateHz, uint8_t optLo,
+                          uint8_t optHi);
   typedef void (*StopCb)(uint32_t sessionId);
   typedef void (*LiveCb)(uint8_t wheel, uint32_t tOffsetMs,
                          const int16_t *temps);
@@ -98,7 +101,8 @@ class EspNowController {
   bool pairing() const { return pairing_; }
 
   // Master: tell peers to start/stop a session.
-  void sendStart(uint32_t sessionId, uint16_t rateHz);
+  void sendStart(uint32_t sessionId, uint16_t rateHz, uint8_t optLo,
+                 uint8_t optHi);
   void sendStop(uint32_t sessionId);
 
   // Slave: stream the latest grid to the master.
@@ -130,7 +134,7 @@ class EspNowController {
   void fillHeader(MsgHeader *h, uint8_t type) const;
   bool accept(const MsgHeader *h) const;
   void sendToAllPeers(const uint8_t *buf, size_t len);  // master fan-out
-  void savePeerFw();                                    // persist peerFw_ to NVS
+  void savePeerFw();  // persist peerFw_ to NVS
 
   DeviceConfig *cfg_ = nullptr;
   uint8_t ifidx_ = 0;  // wifi_interface_t

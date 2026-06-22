@@ -30,7 +30,7 @@ class RecordingController {
   // Start a session. wheel/mac/fwVer/groupId go into the file header.
   bool start(uint32_t sessionId, uint64_t startEpochMs, uint8_t wheel,
              const uint8_t mac[6], const char *fwVer, uint32_t groupId,
-             const char *carName);
+             const char *carName, uint8_t optLo, uint8_t optHi);
 
   void stop();
 
@@ -42,6 +42,11 @@ class RecordingController {
   // Latest downsampled grid (scaled), valid after a sample. For live streaming.
   const int16_t *lastScaledGrid() const { return scaled_; }
   uint32_t lastSampleOffsetMs() const { return lastOffsetMs_; }
+
+  // Read one native-resolution frame (MLX_PIXELS, flip applied, scaled) for the
+  // sensor-alignment view. Refuses (returns false) while recording so it never
+  // races the sampler on the I2C bus; also false if the frame read fails.
+  bool readAlignFrame(int16_t *out);
 
  private:
   ITempSensor *sensor_;

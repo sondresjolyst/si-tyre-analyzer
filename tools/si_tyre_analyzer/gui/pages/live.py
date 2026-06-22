@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...constants import DEFAULT_HOST, WHEELS
+from ...constants import DEFAULT_HOST, OPT_HI_DEFAULT, OPT_LO_DEFAULT, WHEELS
 from .. import theme
 from ..heatmap_widget import ScaleLegend, TyreView
 from ..icons import tool
@@ -87,14 +87,17 @@ class LivePage(QWidget):
 
     def _on_data(self, d: dict):
         cols, rows = int(d.get("cols", 0)), int(d.get("rows", 0))
+        opt_lo = float(d.get("opt_lo", OPT_LO_DEFAULT))
+        opt_hi = float(d.get("opt_hi", OPT_HI_DEFAULT))
         wheels = d.get("wheels", {})
         self._status.setStyleSheet(f"color:{theme.IN_WINDOW};")
         self._status.setText(f"Connected — {len(wheels)} wheel(s) live")
+        self._legend.setRange(opt_lo, opt_hi)
         for w, tv in self._tyres.items():
             wd = wheels.get(w)
             if wd and cols and rows:
                 arr = np.array(wd["temps"], dtype=float).reshape(rows, cols)
-                tv.setGrid(arr)
+                tv.setGrid(arr, opt_lo, opt_hi)
             else:
                 tv.clear()
 

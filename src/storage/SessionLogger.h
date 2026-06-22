@@ -31,7 +31,8 @@ class SessionLogger {
   // Open a new session file and write its header. wheel is WheelPos.
   bool startSession(uint32_t sessionId, uint64_t startEpochMs, uint8_t wheel,
                     uint16_t rateHz, const uint8_t mac[6], const char *fwVer,
-                    uint32_t groupId, const char *carName);
+                    uint32_t groupId, const char *carName, uint8_t optLo,
+                    uint8_t optHi, uint8_t flags);
 
   // Append one downsampled grid. `temps` holds kGridCells scaled int16.
   bool appendSample(uint32_t tOffsetMs, const int16_t *temps);

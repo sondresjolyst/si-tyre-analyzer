@@ -18,7 +18,7 @@ class DisplayController {
   bool getTouch(uint16_t *x, uint16_t *y);
 
  private:
-  void drawCell(int slot, const char *label, const int16_t *temps, bool valid);
+  void drawCell(int slot, const int16_t *temps, bool valid);
 
   bool ready_ = false;
   uint32_t lastDrawMs_ = 0;

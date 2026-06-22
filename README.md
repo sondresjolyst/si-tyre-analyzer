@@ -59,6 +59,8 @@ Pairing is saved across power cycles.
 
 - **Tap** the master's button to start; tap again to stop. All four wheels record
   together, time-aligned.
+- Or use the **Start / Stop recording** button on the master's web page
+  (`http://192.168.4.1`).
 - The status LED is solid while recording.
 - Recording stops on its own at the session time limit.
 
@@ -94,6 +96,10 @@ Runs land in your local library and are grouped automatically by session.
 
 On **Sessions**, **Configure…** opens the device's own web page where you set
 role, wheel, Car ID and sensor options.
+
+The master's **Optimal window** (low/high °C) sets the target tread-temperature
+band — the green zone on the heatmaps and what the **time-in-window** analysis
+counts. See [docs/colour-scale.md](docs/colour-scale.md).
 
 ---
 
@@ -169,11 +175,10 @@ uv run sita dashboard  ~/Documents/SI\ Tyre\ Analyzer
 uv run sita fetch --host 192.168.4.1 --all --dest ~/Documents/SI\ Tyre\ Analyzer
 ```
 
-### Tests
+### Testing
 
-- Native unit tests: `pio test -e native_downsample -e native_logformat -e native_version`
-  (needs a host C++ compiler).
-- Python contract test: `cd tools && uv run pytest`.
+See [docs/testing.md](docs/testing.md) — mocks for hardware-free testing, plus
+unit and contract tests.
 
 ### Notes
 

@@ -78,8 +78,10 @@ class ViewerPage(QWidget):
         if not self._run:
             return
         self._n = min(len(s.grids) for s in self._run.values())
-        rate = next(iter(self._run.values())).sample_rate_hz or 1
+        first = next(iter(self._run.values()))
+        rate = first.sample_rate_hz or 1
         self._base_ms = 1000.0 / rate
+        self._legend.setRange(first.opt_lo, first.opt_hi)
         self._slider.setRange(0, max(0, self._n - 1))
         self._slider.setValue(0)
         self._show_frame(0)
@@ -134,6 +136,9 @@ class ViewerPage(QWidget):
             return
         for w, tv in self._tyres.items():
             s = self._run.get(w)
-            tv.setGrid(s.grids[i] if s is not None else None)
+            if s is not None:
+                tv.setGrid(s.grids[i], s.opt_lo, s.opt_hi)
+            else:
+                tv.setGrid(None)
         t = next(iter(self._run.values())).t_offsets_ms[i] / 1000.0
         self._tlabel.setText(f"t = {t:.1f} s")

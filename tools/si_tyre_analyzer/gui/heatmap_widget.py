@@ -7,9 +7,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath
 from PySide6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from ..constants import TEMP_SCALE_HI, TEMP_SCALE_LO
+from ..constants import OPT_HI_DEFAULT, OPT_LO_DEFAULT
 from . import theme
-from .colors import heat_rgb
+from .colors import heat_rgb, scale_hi, scale_lo
 
 # Tyre patch aspect (width : height). < 1 = portrait, wheel-like. Shared so the
 # Analysis Balance heatmaps match the Live/Viewer patch shape.
@@ -29,15 +29,16 @@ class _HeatCanvas(QWidget):
     def __init__(self):
         super().__init__()
         self._grid: np.ndarray | None = None  # (rows, cols) deg C
-        self._lo: float | None = None  # override scale; None = fixed TEMP_SCALE
-        self._hi: float | None = None
+        self._opt_lo: float = OPT_LO_DEFAULT
+        self._opt_hi: float = OPT_HI_DEFAULT
         self._align = False
         self.setMinimumSize(120, 160)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-    def setGrid(self, grid, lo: float | None = None, hi: float | None = None):
+    def setGrid(self, grid, opt_lo: float | None = None, opt_hi: float | None = None):
         self._grid = grid
-        self._lo, self._hi = lo, hi
+        if opt_lo is not None and opt_hi is not None:
+            self._opt_lo, self._opt_hi = opt_lo, opt_hi
         self.update()
 
     def setAlign(self, on: bool):
@@ -51,8 +52,7 @@ class _HeatCanvas(QWidget):
         if g is None or g.size == 0:
             return
         rows, cols = g.shape
-        lo = self._lo if self._lo is not None else TEMP_SCALE_LO
-        hi = self._hi if self._hi is not None else TEMP_SCALE_HI
+        opt_lo, opt_hi = self._opt_lo, self._opt_hi
         mid = rows // 2
         # Render the patch at a tyre-like aspect (a touch taller than wide),
         # centred with margins, rather than stretching to the whole tile.
@@ -69,7 +69,7 @@ class _HeatCanvas(QWidget):
             for c in range(cols):
                 x0 = ox + c * w // cols
                 x1 = ox + (c + 1) * w // cols
-                rr, gg, bb = heat_rgb(float(g[r, c]), lo, hi)
+                rr, gg, bb = heat_rgb(float(g[r, c]), opt_lo, opt_hi)
                 p.fillRect(x0, y0, x1 - x0, y1 - y0, QColor(rr, gg, bb))
                 if r == mid:
                     p.setPen(QColor(theme.WHITE))
@@ -141,12 +141,12 @@ class TyreView(QWidget):
     def setAlign(self, on: bool):
         self._canvas.setAlign(on)
 
-    def setGrid(self, grid, lo: float | None = None, hi: float | None = None):
+    def setGrid(self, grid, opt_lo: float | None = None, opt_hi: float | None = None):
         if grid is None:
             self._canvas.setGrid(None)
             self._stats.setText("—")
             return
-        self._canvas.setGrid(grid, lo, hi)
+        self._canvas.setGrid(grid, opt_lo, opt_hi)
         self._stats.setText(
             f"min {float(np.nanmin(grid)):4.1f}°   "
             f"avg {float(np.nanmean(grid)):4.1f}°   "
@@ -163,23 +163,25 @@ class ScaleLegend(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._lo: float = TEMP_SCALE_LO
-        self._hi: float = TEMP_SCALE_HI
+        self._opt_lo: float = OPT_LO_DEFAULT
+        self._opt_hi: float = OPT_HI_DEFAULT
         self.setFixedHeight(30)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-    def setRange(self, lo: float, hi: float):
-        self._lo, self._hi = lo, hi
+    def setRange(self, opt_lo: float, opt_hi: float):
+        self._opt_lo, self._opt_hi = opt_lo, opt_hi
         self.update()
 
     def paintEvent(self, _ev):
         p = QPainter(self)
         w, h = self.width(), self.height()
         bar_h = 11
+        lo = scale_lo(self._opt_lo, self._opt_hi)
+        hi = scale_hi(self._opt_lo, self._opt_hi)
         grad = QLinearGradient(0, 0, w, 0)
         for i in range(0, 257, 16):
             f = min(1.0, i / 255.0)
-            rr, gg, bb = heat_rgb(f, 0.0, 1.0)
+            rr, gg, bb = heat_rgb(lo + (hi - lo) * f, self._opt_lo, self._opt_hi)
             grad.setColorAt(f, QColor(rr, gg, bb))
         p.fillRect(0, 0, w, bar_h, grad)
         p.setPen(QColor(theme.BORDER))
@@ -187,7 +189,7 @@ class ScaleLegend(QWidget):
         p.setFont(_mono(11, bold=False))
         p.setPen(QColor(theme.TEXT_DIM))
         ty, th = bar_h + 1, h - bar_h - 1
-        mid = (self._lo + self._hi) / 2
-        p.drawText(0, ty, w, th, Qt.AlignLeft | Qt.AlignVCenter, f"{self._lo:.0f}°")
+        mid = (lo + hi) / 2
+        p.drawText(0, ty, w, th, Qt.AlignLeft | Qt.AlignVCenter, f"{lo:.0f}°")
         p.drawText(0, ty, w, th, Qt.AlignHCenter | Qt.AlignVCenter, f"{mid:.0f}°")
-        p.drawText(0, ty, w, th, Qt.AlignRight | Qt.AlignVCenter, f"{self._hi:.0f}°")
+        p.drawText(0, ty, w, th, Qt.AlignRight | Qt.AlignVCenter, f"{hi:.0f}°")

@@ -33,6 +33,18 @@
 #ifndef DEVICE_ROLE
 #define DEVICE_ROLE "master"
 #endif
+#ifndef PAIR_HOLD_MS
+#define PAIR_HOLD_MS 3000
+#endif
+#ifndef AP_HOLD_MS
+#define AP_HOLD_MS 8000
+#endif
+#ifndef OPT_LO_C
+#define OPT_LO_C 80
+#endif
+#ifndef OPT_HI_C
+#define OPT_HI_C 95
+#endif
 
 namespace tyre {
 
@@ -40,6 +52,10 @@ constexpr int kGridCols = GRID_COLS;
 constexpr int kGridRows = GRID_ROWS;
 constexpr int kGridCells = kGridCols * kGridRows;
 constexpr int kMaxPeers = 4;
+constexpr uint32_t kPairHoldMs = PAIR_HOLD_MS;
+constexpr uint32_t kApHoldMs = AP_HOLD_MS;
+constexpr int kOptLoC = OPT_LO_C;
+constexpr int kOptHiC = OPT_HI_C;
 
 enum WheelPos : uint8_t {
   WHEEL_FL = 0,
@@ -103,6 +119,8 @@ struct DeviceConfig {
   uint8_t flip_x;       // mirror columns (inner/outer across tread) for mount
   uint8_t flip_y;       // mirror rows (direction of travel) for mount
   uint8_t channel;      // ESP-NOW / SoftAP channel (1/6/11)
+  uint8_t opt_lo;       // optimal tyre window low edge (degC)
+  uint8_t opt_hi;       // optimal tyre window high edge (degC)
   uint32_t group_id;    // per-car isolation tag
   char car_name[24];    // user car label (e.g. "Volvo 242 Turbo"); "" if unset
 
@@ -120,6 +138,8 @@ struct DeviceConfig {
     wheel = (HAS_SENSOR) ? wheelFromName(WHEEL_POS) : WHEEL_NONE;
     has_sensor = HAS_SENSOR ? 1 : 0;
     channel = ESPNOW_CHANNEL;
+    opt_lo = OPT_LO_C;
+    opt_hi = OPT_HI_C;
     group_id = 0;  // set at first pairing
   }
 };
