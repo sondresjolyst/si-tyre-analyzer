@@ -11,24 +11,12 @@ permissions: {}
 jobs:
   release-please:
     name: Release Please
-    runs-on: ubuntu-24.04
     if: github.event_name == 'push'
+    uses: equinor/ops-actions/.github/workflows/release-please-manifest.yml@792c28d178029e9d2b5ae027e3acbe18da89e9ed # v9.38.2
     permissions:
-      contents: write # update changelog + create the release
-      pull-requests: write # create release PRs
+      contents: write
+      pull-requests: write
       issues: write
-    outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-      fw_release_created: ${{ steps.release.outputs.release_created }}
-      fw_tag_name: ${{ steps.release.outputs.tag_name }}
-      app_release_created: ${{ steps.release.outputs['tools--release_created'] }}
-      app_tag_name: ${{ steps.release.outputs['tools--tag_name'] }}
-    steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
-        id: release
-        with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
 
   test:
     name: Tests
@@ -42,7 +30,7 @@ jobs:
     name: Build firmware
     runs-on: ubuntu-24.04
     needs: [release-please, test]
-    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.fw_release_created == 'true') }}
+    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] != '') }}
     permissions:
       contents: write
     steps:
@@ -78,10 +66,10 @@ jobs:
           if-no-files-found: error
 
       - name: Attach firmware to release
-        if: ${{ needs.release-please.outputs.fw_release_created == 'true' }}
+        if: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          FW_TAG: ${{ needs.release-please.outputs.fw_tag_name }}
+          FW_TAG: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] }}
           FW_NAME: ${{ steps.meta.outputs.firmware_name }}
         run: gh release upload "$FW_TAG" ".pio/build/esp32-s3-devkitc-1/$FW_NAME.bin" --clobber
 
@@ -89,7 +77,7 @@ jobs:
     name: Build desktop app
     runs-on: ubuntu-24.04
     needs: [release-please, test]
-    if: ${{ always() && needs.test.result == 'success' && needs.release-please.outputs.app_release_created == 'true' }}
+    if: ${{ always() && needs.test.result == 'success' && fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer-app'] != '' }}
     permissions:
       contents: write
     steps:
@@ -108,5 +96,5 @@ jobs:
       - name: Attach wheel to release
         env:
           GH_TOKEN: ${{ github.token }}
-          APP_TAG: ${{ needs.release-please.outputs.app_tag_name }}
+          APP_TAG: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer-app'] }}
         run: gh release upload "$APP_TAG" tools/dist/*.whl --clobber
