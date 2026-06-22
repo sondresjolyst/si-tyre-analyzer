@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      fw_tag:
+        description: "Firmware release tag to build and attach (e.g. si-tyre-analyzer-v0.6.0). Leave empty to skip."
+        type: string
+        required: false
+      app_tag:
+        description: "Desktop app release tag to build and attach (e.g. si-tyre-analyzer-app-v0.5.0). Leave empty to skip."
+        type: string
+        required: false
 
 permissions: {}
 
@@ -29,7 +38,7 @@ jobs:
   get-tags:
     name: Get Release Tags
     needs: release-please
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true') }}
+    if: ${{ always() && (needs.release-please.outputs.releases_created == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.fw_tag != '' || inputs.app_tag != ''))) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -44,12 +53,12 @@ jobs:
           PATHS_RELEASED: ${{ needs.release-please.outputs.paths_released }}
         run: |
           paths="${PATHS_RELEASED:-[]}"
-          fw_tag=""
-          app_tag=""
-          if echo "$paths" | jq -e 'contains(["."])' > /dev/null 2>&1; then
+          fw_tag="${{ inputs.fw_tag }}"
+          app_tag="${{ inputs.app_tag }}"
+          if [ -z "$fw_tag" ] && echo "$paths" | jq -e 'contains(["."])' > /dev/null 2>&1; then
             fw_tag=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | select(.tag_name | startswith("si-tyre-analyzer-v"))] | first | .tag_name // empty')
           fi
-          if echo "$paths" | jq -e 'contains(["tools"])' > /dev/null 2>&1; then
+          if [ -z "$app_tag" ] && echo "$paths" | jq -e 'contains(["tools"])' > /dev/null 2>&1; then
             app_tag=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | select(.tag_name | startswith("si-tyre-analyzer-app-v"))] | first | .tag_name // empty')
           fi
           echo "fw_tag=$fw_tag" >> "$GITHUB_OUTPUT"
@@ -59,7 +68,7 @@ jobs:
     name: Build firmware
     runs-on: ubuntu-24.04
     needs: [release-please, test, get-tags]
-    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.get-tags.outputs.fw_tag != '') }}
+    if: ${{ always() && needs.test.result == 'success' && needs.get-tags.outputs.fw_tag != '' }}
     permissions:
       contents: write
     steps:
