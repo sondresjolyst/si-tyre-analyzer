@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.5.0...si-tyre-analyzer-v0.6.0) (2026-06-22)
+
+
+### Features
+
+* native-resolution sensor alignment view ([#41](https://github.com/sondresjolyst/si-tyre-analyzer/issues/41)) ([5dd16ac](https://github.com/sondresjolyst/si-tyre-analyzer/commit/5dd16ac78c029fc5410ee1ffb02a95b9adc645de))
+* web recording toggle, eFuse monitor, display anti-flicker ([#40](https://github.com/sondresjolyst/si-tyre-analyzer/issues/40)) ([0f3fc29](https://github.com/sondresjolyst/si-tyre-analyzer/commit/0f3fc299a533d61a276d8e8b20ce8ca68bf50a5c))
+
 ## [0.5.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.4.0...si-tyre-analyzer-v0.5.0) (2026-06-15)
 
 
