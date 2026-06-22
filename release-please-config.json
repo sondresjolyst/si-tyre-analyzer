@@ -1,10 +1,54 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "separate-pull-requests": true,
+  "bootstrap-sha": "c1d876704af82019dd975a2b72046ec9340e9387",
   "packages": {
     ".": {
       "release-type": "simple",
       "component": "si-tyre-analyzer",
+      "changelog-sections": [
+        {
+          "type": "feat",
+          "section": "Features"
+        },
+        {
+          "type": "fix",
+          "section": "Bug Fixes"
+        },
+        {
+          "type": "deps",
+          "section": "Dependencies"
+        },
+        {
+          "type": "revert",
+          "section": "Reverts"
+        },
+        {
+          "type": "docs",
+          "section": "Documentation",
+          "hidden": true
+        },
+        {
+          "type": "style",
+          "section": "Styles",
+          "hidden": true
+        },
+        {
+          "type": "chore",
+          "section": "Miscellaneous Chores",
+          "hidden": true
+        },
+        {
+          "type": "refactor",
+          "section": "Code Refactoring",
+          "hidden": true
+        },
+        {
+          "type": "ci",
+          "section": "Continuous Integration",
+          "hidden": true
+        }
+      ],
       "extra-files": [
         {
           "type": "generic",
@@ -14,7 +58,51 @@
     },
     "tools": {
       "release-type": "python",
-      "component": "si-tyre-analyzer-app"
+      "component": "si-tyre-analyzer-app",
+      "changelog-sections": [
+        {
+          "type": "feat",
+          "section": "Features"
+        },
+        {
+          "type": "fix",
+          "section": "Bug Fixes"
+        },
+        {
+          "type": "deps",
+          "section": "Dependencies"
+        },
+        {
+          "type": "revert",
+          "section": "Reverts"
+        },
+        {
+          "type": "docs",
+          "section": "Documentation",
+          "hidden": true
+        },
+        {
+          "type": "style",
+          "section": "Styles",
+          "hidden": true
+        },
+        {
+          "type": "chore",
+          "section": "Miscellaneous Chores",
+          "hidden": true
+        },
+        {
+          "type": "refactor",
+          "section": "Code Refactoring",
+          "hidden": true
+        },
+        {
+          "type": "ci",
+          "section": "Continuous Integration",
+          "hidden": true
+        }
+      ]
     }
   }
 }
+
