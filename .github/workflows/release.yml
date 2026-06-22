@@ -26,11 +26,40 @@ jobs:
       contents: read
     uses: ./.github/workflows/test.yml
 
+  get-tags:
+    name: Get Release Tags
+    needs: release-please
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      fw_tag: ${{ steps.get-tags.outputs.fw_tag }}
+      app_tag: ${{ steps.get-tags.outputs.app_tag }}
+    steps:
+      - name: Get tags
+        id: get-tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PATHS_RELEASED: ${{ needs.release-please.outputs.paths_released }}
+        run: |
+          paths="${PATHS_RELEASED:-[]}"
+          fw_tag=""
+          app_tag=""
+          if echo "$paths" | jq -e 'contains(["."])' > /dev/null 2>&1; then
+            fw_tag=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | select(.tag_name | startswith("si-tyre-analyzer-v"))] | first | .tag_name // empty')
+          fi
+          if echo "$paths" | jq -e 'contains(["tools"])' > /dev/null 2>&1; then
+            app_tag=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | select(.tag_name | startswith("si-tyre-analyzer-app-v"))] | first | .tag_name // empty')
+          fi
+          echo "fw_tag=$fw_tag" >> "$GITHUB_OUTPUT"
+          echo "app_tag=$app_tag" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build firmware
     runs-on: ubuntu-24.04
-    needs: [release-please, test]
-    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] != '') }}
+    needs: [release-please, test, get-tags]
+    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.get-tags.outputs.fw_tag != '') }}
     permissions:
       contents: write
     steps:
@@ -66,18 +95,18 @@ jobs:
           if-no-files-found: error
 
       - name: Attach firmware to release
-        if: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] != '' }}
+        if: ${{ needs.get-tags.outputs.fw_tag != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          FW_TAG: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer'] }}
+          FW_TAG: ${{ needs.get-tags.outputs.fw_tag }}
           FW_NAME: ${{ steps.meta.outputs.firmware_name }}
         run: gh release upload "$FW_TAG" ".pio/build/esp32-s3-devkitc-1/$FW_NAME.bin" --clobber
 
   build-app:
     name: Build desktop app
     runs-on: ubuntu-24.04
-    needs: [release-please, test]
-    if: ${{ always() && needs.test.result == 'success' && fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer-app'] != '' }}
+    needs: [release-please, test, get-tags]
+    if: ${{ always() && needs.test.result == 'success' && needs.get-tags.outputs.app_tag != '' }}
     permissions:
       contents: write
     steps:
@@ -96,5 +125,5 @@ jobs:
       - name: Attach wheel to release
         env:
           GH_TOKEN: ${{ github.token }}
-          APP_TAG: ${{ fromJSON(needs.release-please.outputs.path_tag_names)['si-tyre-analyzer-app'] }}
+          APP_TAG: ${{ needs.get-tags.outputs.app_tag }}
         run: gh release upload "$APP_TAG" tools/dist/*.whl --clobber
