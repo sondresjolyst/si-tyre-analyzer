@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.4.0...si-tyre-analyzer-app-v0.5.0) (2026-06-22)
+
+
+### Features
+
+* web recording toggle, eFuse monitor, display anti-flicker ([#40](https://github.com/sondresjolyst/si-tyre-analyzer/issues/40)) ([0f3fc29](https://github.com/sondresjolyst/si-tyre-analyzer/commit/0f3fc299a533d61a276d8e8b20ce8ca68bf50a5c))
+
+
+### Dependencies
+
+* bump `pytest` from 9.0.3 to 9.1.0 in /tools ([#46](https://github.com/sondresjolyst/si-tyre-analyzer/issues/46)) ([035c203](https://github.com/sondresjolyst/si-tyre-analyzer/commit/035c203833e6a96e6b5018b22c1c3db4d718403a))
+
 ## [0.4.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.3.0...si-tyre-analyzer-app-v0.4.0) (2026-06-15)
 
 
