@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.1](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.6.0...si-tyre-analyzer-v0.6.1) (2026-06-29)
+
+
+### Dependencies
+
+* bump `actions/checkout` from 6.0.3 to 7.0.0 ([#49](https://github.com/sondresjolyst/si-tyre-analyzer/issues/49)) ([00d534b](https://github.com/sondresjolyst/si-tyre-analyzer/commit/00d534b52c4430a4710b293152a51d8e1ad4cf4e))
+* bump `equinor/ops-actions/.github/workflows/release-please-manifest.yml` from 9.38.2 to 9.38.3 ([#50](https://github.com/sondresjolyst/si-tyre-analyzer/issues/50)) ([bf154a7](https://github.com/sondresjolyst/si-tyre-analyzer/commit/bf154a7173436922242c2d28c9d9f156b2529a87))
+* bump `equinor/ops-actions/.github/workflows/super-linter.yml` from 9.38.2 to 9.38.3 ([#48](https://github.com/sondresjolyst/si-tyre-analyzer/issues/48)) ([6f4ba96](https://github.com/sondresjolyst/si-tyre-analyzer/commit/6f4ba96002c7a52cead63d6ca7a9748e5f635496))
+
 ## [0.6.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.5.0...si-tyre-analyzer-v0.6.0) (2026-06-22)
 
 
