@@ -17,7 +17,7 @@ sita = "si_tyre_analyzer.cli:main"
 si-tyre-analyzer = "si_tyre_analyzer.gui.app:main"
 
 [dependency-groups]
-dev = ["pytest>=9.1.0"]
+dev = ["pytest>=9.1.1"]
 
 [build-system]
 requires = ["hatchling"]
