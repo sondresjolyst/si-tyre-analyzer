@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.5.0...si-tyre-analyzer-app-v0.5.1) (2026-06-29)
+
+
+### Dependencies
+
+* bump `pytest` from 9.1.0 to 9.1.1 in /tools ([#47](https://github.com/sondresjolyst/si-tyre-analyzer/issues/47)) ([5078d43](https://github.com/sondresjolyst/si-tyre-analyzer/commit/5078d43b12ae41c72765a3c755c6f2fd96aecbbc))
+
 ## [0.5.0](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.4.0...si-tyre-analyzer-app-v0.5.0) (2026-06-22)
 
 
