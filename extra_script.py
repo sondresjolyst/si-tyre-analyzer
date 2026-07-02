@@ -9,8 +9,10 @@ Import("env")
 producer = env.GetProjectOption("custom_producer_name")
 sensor = env.GetProjectOption("custom_sensor_type")
 prog_version = env.GetProjectOption("custom_version")
+variant = env.GetProjectOption("custom_variant", "")
 
-firmware_name = f"firmware_{producer}_v{prog_version}"
+variant_part = f"{variant}_" if variant else ""
+firmware_name = f"firmware_{producer}_{variant_part}v{prog_version}"
 env.Replace(PROGNAME=firmware_name)
 
 if sensor == "mock":

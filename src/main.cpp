@@ -256,10 +256,24 @@ static bool downloadFirmwareFromMaster() {
 static bool uploadSessionToMaster(uint32_t sessionId) {
   if (!gConfig.has_master || gConfig.master_ssid[0] == 0)
     return false;
-  char fname[40];
-  snprintf(fname, sizeof(fname), "%s_%u.bin", tyre::wheelName(gConfig.wheel),
+  // Match the session file by its "_<wheel>_<id>.bin" suffix; the logger
+  // prefixes each name with a sequence number and car slug.
+  char suffix[24];
+  snprintf(suffix, sizeof(suffix), "_%s_%u.bin", tyre::wheelName(gConfig.wheel),
            static_cast<unsigned>(sessionId));
-  File f = LittleFS.open(String("/sessions/") + fname, "r");
+  String path, fname;
+  File dir = LittleFS.open("/sessions");
+  for (File e = dir.openNextFile(); e; e = dir.openNextFile()) {
+    String n = String(e.name());
+    if (!e.isDirectory() && n.endsWith(suffix)) {
+      fname = n.substring(n.lastIndexOf('/') + 1);
+      path = String("/sessions/") + fname;
+      break;
+    }
+  }
+  if (path.isEmpty())
+    return false;
+  File f = LittleFS.open(path, "r");
   if (!f)
     return false;
   const size_t fsize = f.size();
@@ -299,14 +313,15 @@ static bool uploadSessionToMaster(uint32_t sessionId) {
       }
       c.stop();
       f.close();
-      printHelper.log("INFO", "upload done: %s (%u B)", fname, (unsigned)fsize);
+      printHelper.log("INFO", "upload done: %s (%u B)", fname.c_str(),
+                      (unsigned)fsize);
       return true;
     }
     printHelper.log("WARN", "upload attempt %d failed", attempt + 1);
     delay(1500UL + attempt * 1500UL);  // backoff before retry
   }
   f.close();
-  printHelper.log("WARN", "upload failed after retries: %s", fname);
+  printHelper.log("WARN", "upload failed after retries: %s", fname.c_str());
   return false;
 }
 

@@ -23,10 +23,14 @@ class LiveDashboard {
   };
 
   // Atomically copy wheel i into *dst (safe across the recv-callback/web-task
-  // boundary). Returns dst->valid.
+  // boundary). Returns false if the wheel has no data or its last frame is
+  // older than kStaleMs (e.g. recording stopped), so callers drop it.
   bool snapshot(int i, WheelLive *dst) const;
 
  private:
+  // Live frames stream at ~2 Hz; expire a wheel after a few missed frames.
+  static constexpr uint32_t kStaleMs = 3000;
+
   WheelLive wheels_[4] = {};
 };
 
