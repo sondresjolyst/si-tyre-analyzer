@@ -100,6 +100,12 @@ static void handlePair() {
   server.send(303, "text/plain", "");
 }
 
+static void handleSyncAll() {  // master: ask wheels to upload all stored sessions
+  gEsp.sendSyncAll();
+  server.sendHeader("Location", "/");
+  server.send(303, "text/plain", "");
+}
+
 static void handleApiPeers() {
   JsonDocument doc;
   doc["pairing"] = gEsp.pairing();
@@ -212,13 +218,23 @@ static void handlePushUpload() {
   }
 }
 
+// First byte of every ESP32 app image; reject anything else (e.g. a PDF picked
+// by mistake) before it can be flashed or pushed to wheels.
+static const uint8_t kEspImageMagic = 0xE9;
+
 // Master stores the WHEEL firmware (uploaded by the user) at /fw.bin and
 // serves it; "push" tells paired wheels to pull + flash it.
 static const char *kFwPath = "/fw.bin";
 static File gFwFile;
 static bool gFwUploading = false;  // /fw.bin is mid-write; don't serve/push
+static bool gFwFirst = false;      // next WRITE is the image's first chunk
+static bool gFwBad = false;        // upload isn't an ESP image; drop + don't push
 
 static void handleFwUploadDone() {
+  if (gFwBad) {
+    server.send(400, "text/plain", "not a firmware image (.bin)");
+    return;
+  }
   // Upload finished -> push to all paired wheels.
   if (!gFwUploading && LittleFS.exists(kFwPath))
     gEsp.sendFwPush();
@@ -232,16 +248,28 @@ static void handleFwUpload() {
     if (gFwFile)
       gFwFile.close();
     gFwUploading = true;
+    gFwFirst = true;
+    gFwBad = false;
     gFwFile = LittleFS.open(kFwPath, "w");
     printHelper.log("INFO", "receiving wheel firmware");
   } else if (up.status == UPLOAD_FILE_WRITE) {
-    if (gFwFile)
+    if (gFwFirst && up.currentSize > 0) {
+      gFwFirst = false;
+      if (up.buf[0] != kEspImageMagic)
+        gFwBad = true;
+    }
+    if (gFwFile && !gFwBad)
       gFwFile.write(up.buf, up.currentSize);
   } else if (up.status == UPLOAD_FILE_END) {
     if (gFwFile)
       gFwFile.close();
     gFwUploading = false;
-    printHelper.log("INFO", "wheel firmware stored: %u bytes", up.totalSize);
+    if (gFwBad) {
+      LittleFS.remove(kFwPath);
+      printHelper.log("WARN", "wheel firmware rejected: not an image");
+    } else {
+      printHelper.log("INFO", "wheel firmware stored: %u bytes", up.totalSize);
+    }
   }
 }
 
@@ -259,9 +287,14 @@ static void handleFwBin() {
   f.close();
 }
 
+static bool gOtaFirst = false;  // next WRITE is the image's first chunk
+static bool gOtaBad = false;    // upload isn't an ESP image; abort the flash
+
 static void handleUpdateDone() {
-  bool ok = !Update.hasError();
-  server.send(200, "text/plain", ok ? "OK, rebooting" : "Update FAILED");
+  bool ok = !gOtaBad && !Update.hasError();
+  server.send(200, "text/plain",
+              gOtaBad ? "not a firmware image (.bin)"
+                      : (ok ? "OK, rebooting" : "Update FAILED"));
   if (ok) {
     delay(200);
     ESP.restart();
@@ -272,14 +305,26 @@ static void handleUpdateUpload() {
   HTTPUpload &up = server.upload();
   if (up.status == UPLOAD_FILE_START) {
     printHelper.log("INFO", "OTA start: %s", up.filename.c_str());
+    gOtaFirst = true;
+    gOtaBad = false;
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       Update.printError(Serial);
     }
   } else if (up.status == UPLOAD_FILE_WRITE) {
-    if (Update.write(up.buf, up.currentSize) != up.currentSize) {
+    if (gOtaFirst && up.currentSize > 0) {
+      gOtaFirst = false;
+      if (up.buf[0] != kEspImageMagic) {
+        gOtaBad = true;
+        Update.abort();
+        printHelper.log("WARN", "OTA rejected: not an image");
+      }
+    }
+    if (!gOtaBad && Update.write(up.buf, up.currentSize) != up.currentSize) {
       Update.printError(Serial);
     }
   } else if (up.status == UPLOAD_FILE_END) {
+    if (gOtaBad)
+      return;
     if (Update.end(true)) {
       printHelper.log("INFO", "OTA success: %u bytes", up.totalSize);
     } else {
@@ -366,6 +411,7 @@ void registerFileServerRoutes() {
   server.on("/api/delete", HTTP_GET, handleDelete);
   server.on("/config", HTTP_POST, handleConfig);
   server.on("/pair", HTTP_POST, handlePair);
+  server.on("/sync-all", HTTP_POST, handleSyncAll);
   server.on("/car", HTTP_POST, handleSetCar);
   server.on("/car/new", HTTP_POST, handleNewCar);
   server.on("/api/peers", HTTP_GET, handleApiPeers);

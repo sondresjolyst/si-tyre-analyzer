@@ -16,7 +16,9 @@
 #include <esp_mac.h>
 #include <esp_system.h>
 
+#include <algorithm>
 #include <cstdio>
+#include <vector>
 
 #include "config/DeviceConfig.h"
 #include "config/Settings.h"
@@ -90,6 +92,8 @@ static bool gUploadPending = false;
 static uint32_t gUploadSessionId = 0;
 // Master asked this wheel to pull + flash new firmware.
 static volatile bool gFwPushPending = false;
+// Master asked this wheel to upload every stored session.
+static volatile bool gSyncPending = false;
 // When a sensorless master started the current session (for auto-stop).
 static uint32_t gMasterStartMs = 0;
 
@@ -202,12 +206,17 @@ static void onEspLive(uint8_t wheel, uint32_t tOffsetMs, const int16_t *temps) {
   gDashboard.update(wheel, tOffsetMs, temps);
 }
 static void onEspFwPush() { gFwPushPending = true; }
+static void onEspSync() { gSyncPending = true; }
 
 // Associate STA to the master's (open) SoftAP. Returns whether connected.
+// Connect by explicit channel + BSSID (both stored at pairing) rather than by
+// SSID alone: in AP_STA with ESP-NOW active a scan-based WiFi.begin(ssid) fails
+// with WL_NO_SSID_AVAIL, and the master's SoftAP shares our ESP-NOW channel.
 static bool joinMasterAP(uint32_t timeoutMs) {
   if (WiFi.status() == WL_CONNECTED)
     return true;
-  WiFi.begin(gConfig.master_ssid);
+  WiFi.begin(gConfig.master_ssid, /*password=*/nullptr, gConfig.channel,
+             gConfig.master_mac);
   uint32_t t0 = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs)
     delay(100);
@@ -250,37 +259,18 @@ static bool downloadFirmwareFromMaster() {
   return false;
 }
 
-// Wheel unit -> master: join the master SoftAP and POST the finished .bin.
-// Staggered by wheel and retried, so all four wheels uploading at once (after
-// a shared STOP) don't collide on the master AP.
-static bool uploadSessionToMaster(uint32_t sessionId) {
-  if (!gConfig.has_master || gConfig.master_ssid[0] == 0)
-    return false;
-  // Match the session file by its "_<wheel>_<id>.bin" suffix; the logger
-  // prefixes each name with a sequence number and car slug.
-  char suffix[24];
-  snprintf(suffix, sizeof(suffix), "_%s_%u.bin", tyre::wheelName(gConfig.wheel),
-           static_cast<unsigned>(sessionId));
-  String path, fname;
-  File dir = LittleFS.open("/sessions");
-  for (File e = dir.openNextFile(); e; e = dir.openNextFile()) {
-    String n = String(e.name());
-    if (!e.isDirectory() && n.endsWith(suffix)) {
-      fname = n.substring(n.lastIndexOf('/') + 1);
-      path = String("/sessions/") + fname;
-      break;
-    }
-  }
-  if (path.isEmpty())
-    return false;
+// Wheel unit -> master: join the master SoftAP and POST one .bin. Retried, so
+// a wheel that briefly can't reach the master AP still gets its file across.
+// The master stores by filename (idempotent), so re-sending an old file is safe.
+static bool postFileToMaster(const String &path, const String &fname) {
   File f = LittleFS.open(path, "r");
-  if (!f)
+  if (!f) {
+    printHelper.log("WARN", "upload skip: open failed %s", path.c_str());
     return false;
+  }
   const size_t fsize = f.size();
-
-  // Stagger by wheel position (FL=0, FR=1, RL=2, RR=3).
-  if (gConfig.wheel < 4)
-    delay(gConfig.wheel * 1500UL);
+  printHelper.log("INFO", "upload start: %s (%u B) -> '%s'", fname.c_str(),
+                  (unsigned)fsize, gConfig.master_ssid);
 
   const IPAddress masterIp(192, 168, 4, 1);
   const String boundary = "----sitatyre";
@@ -293,36 +283,103 @@ static bool uploadSessionToMaster(uint32_t sessionId) {
 
   for (int attempt = 0; attempt < 4; attempt++) {
     WiFiClient c;
-    if (joinMasterAP(8000) && c.connect(masterIp, 80)) {
-      c.print(String("POST /api/push HTTP/1.1\r\nHost: 192.168.4.1\r\n") +
-              "Content-Type: multipart/form-data; boundary=" + boundary +
-              "\r\nContent-Length: " + clen + "\r\nConnection: close\r\n\r\n");
-      c.print(hdr);
-      f.seek(0);
-      uint8_t buf[512];
-      while (f.available()) {
-        int n = f.read(buf, sizeof(buf));
-        c.write(buf, n);
-      }
-      c.print(tail);
-      uint32_t r0 = millis();
-      while (c.connected() && millis() - r0 < 3000) {
-        while (c.available())
-          c.read();
-        delay(10);
-      }
-      c.stop();
-      f.close();
-      printHelper.log("INFO", "upload done: %s (%u B)", fname.c_str(),
-                      (unsigned)fsize);
-      return true;
+    if (!joinMasterAP(8000)) {
+      printHelper.log("WARN", "upload attempt %d: join '%s' failed (status=%d)",
+                      attempt + 1, gConfig.master_ssid, (int)WiFi.status());
+      delay(1500UL + attempt * 1500UL);
+      continue;
     }
-    printHelper.log("WARN", "upload attempt %d failed", attempt + 1);
-    delay(1500UL + attempt * 1500UL);  // backoff before retry
+    if (!c.connect(masterIp, 80)) {
+      printHelper.log("WARN", "upload attempt %d: joined but connect :80 failed",
+                      attempt + 1);
+      delay(1500UL + attempt * 1500UL);
+      continue;
+    }
+    c.print(String("POST /api/push HTTP/1.1\r\nHost: 192.168.4.1\r\n") +
+            "Content-Type: multipart/form-data; boundary=" + boundary +
+            "\r\nContent-Length: " + clen + "\r\nConnection: close\r\n\r\n");
+    c.print(hdr);
+    f.seek(0);
+    uint8_t buf[512];
+    while (f.available()) {
+      int n = f.read(buf, sizeof(buf));
+      c.write(buf, n);
+    }
+    c.print(tail);
+    uint32_t r0 = millis();
+    while (c.connected() && millis() - r0 < 3000) {
+      while (c.available())
+        c.read();
+      delay(10);
+    }
+    c.stop();
+    f.close();
+    printHelper.log("INFO", "upload done: %s (%u B)", fname.c_str(),
+                    (unsigned)fsize);
+    return true;
   }
   f.close();
   printHelper.log("WARN", "upload failed after retries: %s", fname.c_str());
   return false;
+}
+
+// Session-file basename -> ("/sessions/<name>", "<name>"). Handles both bare and
+// path-prefixed dir entries.
+static void sessionPath(const String &name, String *path, String *fname) {
+  *fname = name.substring(name.lastIndexOf('/') + 1);
+  *path = String("/sessions/") + *fname;
+}
+
+// Upload the session just finished, matched by its "_<wheel>_<id>.bin" suffix.
+// Staggered by wheel so four wheels uploading after a shared STOP don't collide.
+static bool uploadSessionToMaster(uint32_t sessionId) {
+  if (!gConfig.has_master || gConfig.master_ssid[0] == 0) {
+    printHelper.log("WARN", "upload skip: no master (has_master=%u ssid='%s')",
+                    gConfig.has_master, gConfig.master_ssid);
+    return false;
+  }
+  char suffix[24];
+  snprintf(suffix, sizeof(suffix), "_%s_%u.bin", tyre::wheelName(gConfig.wheel),
+           static_cast<unsigned>(sessionId));
+  String path, fname;
+  File dir = LittleFS.open("/sessions");
+  for (File e = dir.openNextFile(); e; e = dir.openNextFile()) {
+    String n = String(e.name());
+    if (!e.isDirectory() && n.endsWith(suffix)) {
+      sessionPath(n, &path, &fname);
+      break;
+    }
+  }
+  if (path.isEmpty()) {
+    printHelper.log("WARN", "upload skip: no file matching *%s", suffix);
+    return false;
+  }
+  if (gConfig.wheel < 4)
+    delay(gConfig.wheel * 1500UL);
+  return postFileToMaster(path, fname);
+}
+
+// Master-triggered (MSG_SYNC): push every stored session to the master, oldest
+// first. Names are collected up front so no dir handle is held across the WiFi
+// work. Master overwrites by filename, so already-present files are harmless.
+static void uploadAllSessions() {
+  if (!gConfig.has_master || gConfig.master_ssid[0] == 0) {
+    printHelper.log("WARN", "sync skip: no master");
+    return;
+  }
+  std::vector<String> names;
+  for (const auto &s : gLogger.listSessions())
+    names.push_back(s.name);
+  std::sort(names.begin(), names.end());
+  printHelper.log("INFO", "sync: %u session(s)", (unsigned)names.size());
+  if (gConfig.wheel < 4)
+    delay(gConfig.wheel * 1500UL);  // stagger wheels once
+  for (const auto &n : names) {
+    String path, fname;
+    sessionPath(n, &path, &fname);
+    postFileToMaster(path, fname);
+  }
+  printHelper.log("INFO", "sync: done");
 }
 
 // ── LED feedback ─────────────────────────────────────────────────────────────
@@ -402,13 +459,14 @@ static void dumpFile(const String &name) {
 static void handleCommand(String cmd) {
   cmd.trim();
   if (cmd == "info") {
-    Serial.printf("role=%s wheel=%s has_sensor=%u ch=%u group=0x%06X "
-                  "optimal=%u-%u state=%d fs=%u/%u recording=%d\n",
+    Serial.printf("role=%s wheel=%s has_sensor=%u ch=%u group=0x%06X car='%s' "
+                  "master_ssid='%s' optimal=%u-%u state=%d fs=%u/%u recording=%d\n",
                   gConfig.role == tyre::ROLE_MASTER ? "master" : "slave",
                   tyre::wheelName(gConfig.wheel), gConfig.has_sensor,
-                  gConfig.channel, gConfig.group_id, gConfig.opt_lo,
-                  gConfig.opt_hi, appState, (unsigned)LittleFS.usedBytes(),
-                  (unsigned)LittleFS.totalBytes(), recorder.isRecording());
+                  gConfig.channel, gConfig.group_id, gConfig.car_name,
+                  gConfig.master_ssid, gConfig.opt_lo, gConfig.opt_hi, appState,
+                  (unsigned)LittleFS.usedBytes(), (unsigned)LittleFS.totalBytes(),
+                  recorder.isRecording());
   } else if (cmd == "rec") {
     toggleRecording();
     Serial.println("OK rec");
@@ -536,6 +594,8 @@ void setup() {
                   VERSION,
                   (gConfig.role == tyre::ROLE_MASTER) ? "master" : "slave",
                   tyre::wheelName(gConfig.wheel), gConfig.has_sensor);
+  printHelper.log("INFO", "reset reason=%d heap=%u", (int)esp_reset_reason(),
+                  (unsigned)ESP.getFreeHeap());
 
   if (forceAP) {
     setupAP(gConfig.channel);
@@ -556,6 +616,7 @@ void setup() {
   gEsp.onStop(onEspStop);
   gEsp.onLive(onEspLive);
   gEsp.onFwPush(onEspFwPush);
+  gEsp.onSync(onEspSync);
 
   recorder.setFlip(gConfig.flip_x, gConfig.flip_y);
   if (gConfig.has_sensor && !recorder.beginSensor()) {
@@ -627,6 +688,10 @@ void loop() {
   if (gFwPushPending) {
     gFwPushPending = false;
     downloadFirmwareFromMaster();
+  }
+  if (gSyncPending) {
+    gSyncPending = false;
+    uploadAllSessions();
   }
 
   if (apActive || appState == STATE_CONFIG_AP) {

@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -238,6 +239,10 @@ String pageRoot(const DeviceConfig &cfg) {
   if (cfg.has_sensor)
     h += "<a class='btn' href='/align'>Align sensor</a>";
   h += "<a class='btn' href='/sessions'>View recorded sessions</a>";
+  if (master)
+    h += "<form method='POST' action='/sync-all' style='margin-top:10px'>"
+         "<button class='btn' type='submit'>Sync all wheel sessions</button>"
+         "</form>";
 
   h += "<div class='sec'>Pairing</div><div class='card'>";
   if (master) {
@@ -371,9 +376,21 @@ String pageRoot(const DeviceConfig &cfg) {
          "<p class='hint'>Oldest sessions are deleted automatically when space "
          "runs low.</p>";
   }
-  h += "<label class='lbl'>Firmware update</label>"
-       "<form method='POST' action='/update' enctype='multipart/form-data'>"
-       "<input type='file' name='firmware' accept='.bin'>"
+  h += "<label class='lbl'>Firmware update</label>";
+  // Captive-portal webviews block <input type=file>. Offer a jump to a full
+  // browser (Android via intent:, iOS via instruction) where upload works.
+  // Targets the current AP host, so it works on both master (…4.1) and wheels.
+  h += R"(<a class='btn' id='fwBrowser'>Open updater in browser</a>
+<p class='hint' id='fwBrowserHint'></p>
+<script>(function(){var u=navigator.userAgent||'',h=location.host,
+a=document.getElementById('fwBrowser'),t=document.getElementById('fwBrowserHint');
+if(/Android/i.test(u)){a.href='intent://'+h+'/#Intent;scheme=http;action=android.intent.action.VIEW;end';
+t.textContent='If Choose file does nothing, tap this to open a full browser.';}
+else if(/iPhone|iPad|iPod/i.test(u)){a.style.display='none';
+t.textContent='iPhone: close this sign-in popup (Cancel, Use Without Internet), then open Safari to '+h+' to upload firmware.';}
+else{a.href='http://'+h+'/';t.textContent='If Choose file does nothing, open '+h+' in a full browser.';}})();</script>)";
+  h += "<form method='POST' action='/update' enctype='multipart/form-data'>"
+       "<input type='file' name='firmware'>"
        "<button class='btn primary' type='submit' style='margin-top:10px'>"
        "Upload &amp; flash this device</button>";
   if (master) {
@@ -426,7 +443,10 @@ String pageSessions(const std::vector<SessionInfo> &sessions) {
   if (sessions.empty()) {
     h += "<p class='muted'>No sessions recorded yet.</p>";
   } else {
-    std::map<uint32_t, std::vector<const SessionInfo *>> runs;
+    // Newest run first: session_id ascends with each recording, so order the
+    // map high-to-low.
+    std::map<uint32_t, std::vector<const SessionInfo *>, std::greater<uint32_t>>
+        runs;
     for (const auto &s : sessions)
       runs[s.session_id].push_back(&s);
 
