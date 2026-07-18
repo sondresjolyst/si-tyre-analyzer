@@ -110,6 +110,28 @@ bool EspNowController::accept(const MsgHeader *h) const {
   return cfg_->group_id != 0 && h->group_id == cfg_->group_id;
 }
 
+void EspNowController::applyMasterInfo(const char *ssid, const char *carName) {
+  if (cfg_->role != ROLE_SLAVE)
+    return;
+  bool changed = false;
+  if (ssid && ssid[0] &&
+      strncmp(cfg_->master_ssid, ssid, sizeof(cfg_->master_ssid)) != 0) {
+    strncpy(cfg_->master_ssid, ssid, sizeof(cfg_->master_ssid) - 1);
+    cfg_->master_ssid[sizeof(cfg_->master_ssid) - 1] = 0;
+    changed = true;
+  }
+  if (carName && strncmp(cfg_->car_name, carName, sizeof(cfg_->car_name)) != 0) {
+    strncpy(cfg_->car_name, carName, sizeof(cfg_->car_name) - 1);
+    cfg_->car_name[sizeof(cfg_->car_name) - 1] = 0;
+    changed = true;
+  }
+  if (changed) {
+    saveConfig(*cfg_);
+    printHelper.log("INFO", "master info: ssid='%s' car='%s'",
+                    cfg_->master_ssid, cfg_->car_name);
+  }
+}
+
 void EspNowController::enterPairing() {
   if (cfg_->role == ROLE_MASTER && cfg_->group_id == 0) {
     cfg_->group_id = macCarId();
@@ -184,6 +206,13 @@ void EspNowController::sendFwPush() {
   printHelper.log("INFO", "fw push sent to wheels");
 }
 
+void EspNowController::sendSyncAll() {
+  SyncMsg m = {};
+  fillHeader(&m.h, MSG_SYNC);
+  sendToAllPeers(reinterpret_cast<uint8_t *>(&m), sizeof(m));
+  printHelper.log("INFO", "sync request sent to wheels");
+}
+
 void EspNowController::sendStart(uint32_t sessionId, uint16_t rateHz,
                                  uint8_t optLo, uint8_t optHi) {
   StartMsg m = {};
@@ -196,6 +225,8 @@ void EspNowController::sendStart(uint32_t sessionId, uint16_t rateHz,
   m.rows = kGridRows;
   m.opt_lo = optLo;
   m.opt_hi = optHi;
+  strncpy(m.ssid, apSsid().c_str(), sizeof(m.ssid) - 1);
+  strncpy(m.car_name, cfg_->car_name, sizeof(m.car_name) - 1);
   sendToAllPeers(reinterpret_cast<uint8_t *>(&m), sizeof(m));
 }
 
@@ -307,6 +338,9 @@ void EspNowController::onRecv(const uint8_t *srcMac, const uint8_t *data,
     if (!accept(h) || len < static_cast<int>(sizeof(StartMsg)))
       return;
     const StartMsg *m = reinterpret_cast<const StartMsg *>(data);
+    // Keep the upload target + car label fresh at the point of use (the upload
+    // follows this session); heartbeat replies keep it fresh while idle too.
+    applyMasterInfo(m->ssid, m->car_name);
     if (startCb_)
       startCb_(m->session_id, m->rate_hz, m->opt_lo, m->opt_hi);
     break;
@@ -336,6 +370,13 @@ void EspNowController::onRecv(const uint8_t *srcMac, const uint8_t *data,
       fwPushCb_();
     break;
   }
+  case MSG_SYNC: {
+    if (cfg_->role != ROLE_SLAVE || !accept(h))
+      return;
+    if (syncCb_)
+      syncCb_();
+    break;
+  }
   case MSG_HEARTBEAT: {
     if (cfg_->role != ROLE_MASTER || !accept(h))
       return;
@@ -353,6 +394,22 @@ void EspNowController::onRecv(const uint8_t *srcMac, const uint8_t *data,
         break;
       }
     }
+    // Reply with current SSID/car so the wheel self-heals after a master rename
+    // while idle, without waiting for the next recording.
+    ConfigMsg cm = {};
+    fillHeader(&cm.h, MSG_CONFIG);
+    strncpy(cm.ssid, apSsid().c_str(), sizeof(cm.ssid) - 1);
+    strncpy(cm.car_name, cfg_->car_name, sizeof(cm.car_name) - 1);
+    esp_now_send(srcMac, reinterpret_cast<uint8_t *>(&cm), sizeof(cm));
+    break;
+  }
+  case MSG_CONFIG: {
+    if (cfg_->role != ROLE_SLAVE || !accept(h))
+      return;
+    if (len < static_cast<int>(sizeof(ConfigMsg)))
+      return;
+    const ConfigMsg *m = reinterpret_cast<const ConfigMsg *>(data);
+    applyMasterInfo(m->ssid, m->car_name);
     break;
   }
   default:

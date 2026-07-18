@@ -21,6 +21,8 @@ enum MsgType : uint8_t {
   MSG_LIVE_GRID = 5,  // slave  -> master
   MSG_FW_PUSH = 7,    // master -> peers: pull /fw.bin from the master AP
   MSG_HEARTBEAT = 8,  // slave  -> master: periodic liveness + fw version
+  MSG_SYNC = 9,       // master -> peers: upload all stored sessions
+  MSG_CONFIG = 10,    // master -> slave: current SSID/car (heartbeat reply)
 };
 
 #pragma pack(push, 1)
@@ -50,9 +52,19 @@ struct FwPushMsg {
   MsgHeader h;
 };
 
+struct SyncMsg {
+  MsgHeader h;
+};
+
 struct HeartbeatMsg {
   MsgHeader h;
   char fw[16];
+};
+
+struct ConfigMsg {
+  MsgHeader h;
+  char ssid[33];      // master's current SoftAP name
+  char car_name[24];  // master's current car label
 };
 
 struct StartMsg {
@@ -65,6 +77,10 @@ struct StartMsg {
   uint8_t rows;
   uint8_t opt_lo;
   uint8_t opt_hi;
+  char ssid[33];      // master's current SoftAP name, so the wheel's stored
+                      // upload target can't drift stale when car_name changes
+  char car_name[24];  // master's current car label, mirrored so the wheel's own
+                      // SoftAP SSID follows a later master rename
 };
 
 struct StopMsg {
@@ -88,6 +104,7 @@ class EspNowController {
   typedef void (*LiveCb)(uint8_t wheel, uint32_t tOffsetMs,
                          const int16_t *temps);
   typedef void (*FwPushCb)();
+  typedef void (*SyncCb)();
 
   // Init radio (channel from cfg), esp-now, and re-add stored peers.
   // For the master, the SoftAP must already be up on cfg->channel.
@@ -112,6 +129,9 @@ class EspNowController {
   // Master: tell paired wheels to pull /fw.bin and self-flash.
   void sendFwPush();
 
+  // Master: tell paired wheels to upload every stored session.
+  void sendSyncAll();
+
   // Last-seen firmware version per peer slot (RAM only, "" until heard).
   const char *peerFw(int i) const { return peerFw_[i]; }
 
@@ -122,6 +142,7 @@ class EspNowController {
   void onStop(StopCb cb) { stopCb_ = cb; }
   void onLive(LiveCb cb) { liveCb_ = cb; }
   void onFwPush(FwPushCb cb) { fwPushCb_ = cb; }
+  void onSync(SyncCb cb) { syncCb_ = cb; }
 
  private:
   static EspNowController *self_;
@@ -133,6 +154,8 @@ class EspNowController {
   void addStoredPeers();
   void fillHeader(MsgHeader *h, uint8_t type) const;
   bool accept(const MsgHeader *h) const;
+  // Slave: adopt the master's current SSID/car label, persisting on change.
+  void applyMasterInfo(const char *ssid, const char *carName);
   void sendToAllPeers(const uint8_t *buf, size_t len);  // master fan-out
   void savePeerFw();  // persist peerFw_ to NVS
 
@@ -147,6 +170,7 @@ class EspNowController {
   StopCb stopCb_ = nullptr;
   LiveCb liveCb_ = nullptr;
   FwPushCb fwPushCb_ = nullptr;
+  SyncCb syncCb_ = nullptr;
   char peerFw_[kMaxPeers][16] = {};
   uint32_t peerSeen_[kMaxPeers] = {};  // millis of last heartbeat (0 = never)
 };

@@ -65,12 +65,20 @@ jobs:
           echo "app_tag=$app_tag" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build firmware
+    name: Build firmware (${{ matrix.variant }})
     runs-on: ubuntu-24.04
     needs: [release-please, test, get-tags]
     if: ${{ always() && needs.test.result == 'success' && needs.get-tags.outputs.fw_tag != '' }}
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: esp32-s3-devkitc-1  # display build (master)
+            variant: dash
+          - env: mlx90640            # thermal-sensor build (wheels)
+            variant: wheel
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -88,19 +96,23 @@ jobs:
 
       - name: Read firmware metadata
         id: meta
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
           PRODUCER=$(grep '^custom_producer_name' platformio.ini | awk -F' *= *' '{print $2}' | tr -d ' ')
           VERSION=v$(grep '^custom_version' platformio.ini | awk -F' *= *' '{print $2}' | cut -d';' -f1 | tr -d ' ')
-          echo "firmware_name=firmware_${PRODUCER}_${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "firmware_name=firmware_${PRODUCER}_${VARIANT}_${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Build firmware
-        run: pio run --environment esp32-s3-devkitc-1
+        env:
+          PIO_ENV: ${{ matrix.env }}
+        run: pio run --environment "$PIO_ENV"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.meta.outputs.firmware_name }}
-          path: .pio/build/esp32-s3-devkitc-1/${{ steps.meta.outputs.firmware_name }}.bin
+          path: .pio/build/${{ matrix.env }}/${{ steps.meta.outputs.firmware_name }}.bin
           if-no-files-found: error
 
       - name: Attach firmware to release
@@ -109,7 +121,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           FW_TAG: ${{ needs.get-tags.outputs.fw_tag }}
           FW_NAME: ${{ steps.meta.outputs.firmware_name }}
-        run: gh release upload "$FW_TAG" ".pio/build/esp32-s3-devkitc-1/$FW_NAME.bin" --clobber
+          PIO_ENV: ${{ matrix.env }}
+        run: gh release upload "$FW_TAG" ".pio/build/$PIO_ENV/$FW_NAME.bin" --clobber
 
   build-app:
     name: Build desktop app

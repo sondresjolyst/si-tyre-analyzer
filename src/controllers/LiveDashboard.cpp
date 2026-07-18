@@ -40,7 +40,7 @@ bool LiveDashboard::snapshot(int i, WheelLive *dst) const {
   portENTER_CRITICAL(&gLiveMux);
   *dst = wheels_[i];
   portEXIT_CRITICAL(&gLiveMux);
-  return dst->valid;
+  return dst->valid && (millis() - dst->last_seen_ms) < kStaleMs;
 }
 
 static void handleApiLive() {
