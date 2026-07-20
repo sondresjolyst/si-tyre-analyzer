@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.6.1...si-tyre-analyzer-v0.6.2) (2026-07-20)
+
+
+### Dependencies
+
+* bump `astral-sh/setup-uv` from 8.3.0 to 8.3.2 ([#63](https://github.com/sondresjolyst/si-tyre-analyzer/issues/63)) ([a172d45](https://github.com/sondresjolyst/si-tyre-analyzer/commit/a172d45df2f56204f37d3d4b39c931392dd0fc02))
+* bump `github/codeql-action/analyze` from 4.36.3 to 4.37.0 ([#64](https://github.com/sondresjolyst/si-tyre-analyzer/issues/64)) ([f5e7a43](https://github.com/sondresjolyst/si-tyre-analyzer/commit/f5e7a434b059f7ced3eba05eb87826b05b8511ea))
+* bump `github/codeql-action/init` from 4.36.3 to 4.37.0 ([#62](https://github.com/sondresjolyst/si-tyre-analyzer/issues/62)) ([f55fa57](https://github.com/sondresjolyst/si-tyre-analyzer/commit/f55fa578162ea506859481f49ce1dc9e0ebe989c))
+
 ## [0.6.1](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.6.0...si-tyre-analyzer-v0.6.1) (2026-07-18)
 
 
