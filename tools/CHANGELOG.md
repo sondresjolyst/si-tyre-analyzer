@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.5.1...si-tyre-analyzer-app-v0.5.2) (2026-07-21)
+
+
+### Dependencies
+
+* **tools:** bump `pillow` from 12.2.0 to 12.3.0 ([#66](https://github.com/sondresjolyst/si-tyre-analyzer/issues/66)) ([dec4208](https://github.com/sondresjolyst/si-tyre-analyzer/commit/dec42086504553178a21c82b5e047348c2e27160))
+
 ## [0.5.1](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.5.0...si-tyre-analyzer-app-v0.5.1) (2026-07-18)
 
 
