@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.4](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.6.3...si-tyre-analyzer-v0.6.4) (2026-08-10)
+
+
+### Dependencies
+
+* **github-actions:** bump `astral-sh/setup-uv` from 8.3.2 to 9.0.0 ([#78](https://github.com/sondresjolyst/si-tyre-analyzer/issues/78)) ([09097ee](https://github.com/sondresjolyst/si-tyre-analyzer/commit/09097eec12cf119357eff00a4bbab3a4de106013))
+* **github-actions:** bump `equinor/ops-actions/.github/workflows/release-please-manifest.yml` from 9.39.2 to 9.39.3 ([#79](https://github.com/sondresjolyst/si-tyre-analyzer/issues/79)) ([d83c400](https://github.com/sondresjolyst/si-tyre-analyzer/commit/d83c40027bc8580d45998e086846dad3c594eaa8))
+* **github-actions:** bump `equinor/ops-actions/.github/workflows/release-please-manifest.yml` from 9.39.3 to 9.39.4 ([#85](https://github.com/sondresjolyst/si-tyre-analyzer/issues/85)) ([3cf780a](https://github.com/sondresjolyst/si-tyre-analyzer/commit/3cf780a50a0b62c3f2143f07e271068b27bb3160))
+* **github-actions:** bump `equinor/ops-actions/.github/workflows/super-linter.yml` from 9.39.2 to 9.39.3 ([#77](https://github.com/sondresjolyst/si-tyre-analyzer/issues/77)) ([c4ddd5b](https://github.com/sondresjolyst/si-tyre-analyzer/commit/c4ddd5b083bb911e2f30cf5bfab08fe476f43750))
+* **github-actions:** bump `equinor/ops-actions/.github/workflows/super-linter.yml` from 9.39.3 to 9.39.4 ([#86](https://github.com/sondresjolyst/si-tyre-analyzer/issues/86)) ([5a75d81](https://github.com/sondresjolyst/si-tyre-analyzer/commit/5a75d8154cebd17b452b220dccdd8e95b52a0883))
+* **github-actions:** bump `github/codeql-action/analyze` from 4.37.1 to 4.37.3 ([#80](https://github.com/sondresjolyst/si-tyre-analyzer/issues/80)) ([bbd57b6](https://github.com/sondresjolyst/si-tyre-analyzer/commit/bbd57b6048256753becdec099543c9d5445c7022))
+* **github-actions:** bump `github/codeql-action/analyze` from 4.37.3 to 4.37.4 ([#84](https://github.com/sondresjolyst/si-tyre-analyzer/issues/84)) ([ad4d34d](https://github.com/sondresjolyst/si-tyre-analyzer/commit/ad4d34db3aea33ac1dec6db2356cc7839de33d42))
+* **github-actions:** bump `github/codeql-action/init` from 4.37.1 to 4.37.3 ([#76](https://github.com/sondresjolyst/si-tyre-analyzer/issues/76)) ([678c35c](https://github.com/sondresjolyst/si-tyre-analyzer/commit/678c35c3b8df04060a7791e71c675c078e8781db))
+* **github-actions:** bump `github/codeql-action/init` from 4.37.3 to 4.37.4 ([#83](https://github.com/sondresjolyst/si-tyre-analyzer/issues/83)) ([fe92ca9](https://github.com/sondresjolyst/si-tyre-analyzer/commit/fe92ca91744ef6f86d4b99e36c807d9290c86a38))
+
 ## [0.6.3](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-v0.6.2...si-tyre-analyzer-v0.6.3) (2026-07-27)
 
 
