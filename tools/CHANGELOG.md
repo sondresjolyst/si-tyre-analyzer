@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.5.2...si-tyre-analyzer-app-v0.5.3) (2026-09-26)
+
+
+### Bug Fixes
+
+* show the logo wordmark as SJØLYST INNOVATION AS ([#105](https://github.com/sondresjolyst/si-tyre-analyzer/issues/105)) ([be867e4](https://github.com/sondresjolyst/si-tyre-analyzer/commit/be867e4f1bb4fd524133193166d738df707206ee))
+
 ## [0.5.2](https://github.com/sondresjolyst/si-tyre-analyzer/compare/si-tyre-analyzer-app-v0.5.1...si-tyre-analyzer-app-v0.5.2) (2026-07-27)
 
 
