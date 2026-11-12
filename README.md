@@ -154,7 +154,7 @@ in the web UI.
 
 ### Run the app from source
 
-1. Install **Python 3.10+** (on Windows tick "Add Python to PATH") and **uv**:
+1. Install **Python 3.11+** (on Windows tick "Add Python to PATH") and **uv**:
    - Windows: `irm https://astral.sh/uv/install.ps1 | iex`
    - macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 2. Run it:

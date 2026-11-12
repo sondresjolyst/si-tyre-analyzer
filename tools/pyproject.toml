@@ -2,7 +2,7 @@
 name = "si-tyre-analyzer"
 version = "0.5.3"
 description = "View and analyse tyre temperature recordings from SI Tyre Analyzer"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.24",
     "matplotlib>=3.7",
